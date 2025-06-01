@@ -1,7 +1,7 @@
 package inmemory
 
 type intersect interface {
-	Intersect(in1, in2 []string) (res []string)
+	Intersect(in1 []string, in ...[]string) (res []string)
 	IntersectInt(in1, in2 []int) (res []int)
 }
 
@@ -10,21 +10,26 @@ type Intersect struct {
 }
 
 // Intersect ...
-func (s *Intersect) Intersect(in1, in2 []string) (res []string) {
-	one := in1
-	two := in2
-	if len(one) < len(two) {
-		one, two = two, one
-	}
-	t := make(map[string]struct{}, len(one))
-	for _, v := range one {
+func (s *Intersect) Intersect(in1 []string, in ...[]string) (res []string) {
+	t := make(map[string]struct{}, len(in1))
+	for _, v := range in1 {
 		t[v] = struct{}{}
 	}
-	res = make([]string, 0, len(two))
-	for _, d := range two {
-		if _, ok := t[d]; ok {
-			res = append(res, d)
+	tm := 0
+	for _, i := range in {
+		if tm > 0 {
+			t = make(map[string]struct{})
+			for _, v := range res {
+				t[v] = struct{}{}
+			}
+			res = make([]string, 0)
 		}
+		for _, d := range i {
+			if _, ok := t[d]; ok {
+				res = append(res, d)
+			}
+		}
+		tm++
 	}
 	return
 }
