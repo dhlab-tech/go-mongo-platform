@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dhlab-tech/go-mongo-platform/pkg/mongo"
 	mng "go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -60,6 +61,7 @@ type Entity[T d] struct {
 	BeforeListeners []EventListener[T]
 	AfterListeners  []EventListener[T]
 	Notify          Notify[T]
+	Option          func(*CacheWithEventListener[T], *mongo.Mongo[T])
 }
 
 // CacheWithEventListener ...

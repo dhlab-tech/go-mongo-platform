@@ -76,8 +76,7 @@ func (p *InMemory[T]) AwaitDelete(ctx context.Context, ps T) (err error) {
 }
 
 // NewInMemory ...
-func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entityDeps Entity[T],
-	option ...func(cacheWithEventListener *CacheWithEventListener[T], mongo *mongo.Mongo[T])) (*InMemory[T], error) {
+func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entityDeps Entity[T]) (*InMemory[T], error) {
 	if entityDeps.Collection == "" {
 		return nil, nil
 	}
@@ -95,8 +94,8 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 		im.EventListener,
 	)
 	stream.AddListener(ctx, deps.Db, entityDeps.Collection, m.Listener)
-	for _, opt := range option {
-		opt(im, m)
+	if entityDeps.Option != nil {
+		entityDeps.Option(im, m)
 	}
 	its, err := m.Searcher.All(ctx)
 	if err != nil {
