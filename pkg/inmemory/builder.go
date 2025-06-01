@@ -82,7 +82,6 @@ func NewCacheWithEventListener[T d](
 ) *CacheWithEventListener[T] {
 	c := NewCache[T](0, map[int]string{}, map[string]int{}, map[string]T{})
 	l := NewListener[T](c)
-
 	for _, s := range beforeListeners {
 		l.AddListener(s, true)
 	}
@@ -181,34 +180,6 @@ func prepareIdxs(v reflect.Value) (idxs map[string]map[string]*idx) {
 					}
 					if _idx.to != "" {
 						idxs[_indexType][_indexName].to = field + "+" + _idx.to
-					}
-				}
-			}
-			continue
-		}
-		if _v.Kind() == reflect.Slice || _v.Kind() == reflect.Array {
-			if _v.Elem().Kind() == reflect.Struct {
-				if strings.Compare(_v.Elem().Type().Name(), "ObjectID") == 0 ||
-					strings.Compare(_v.Elem().Type().Name(), "RawMessage") == 0 ||
-					strings.Compare(_v.Elem().Type().Name(), "Decimal") == 0 {
-					continue
-				}
-				for i := 0; i < _v.Len(); i++ {
-					for _indexType, _idxt := range prepareIdxs(_v.Index(i)) {
-						for _indexName, _idx := range _idxt {
-							if _, ok := idxs[_indexType]; !ok {
-								idxs[_indexType] = map[string]*idx{}
-							}
-							if idxs[_indexType][_indexName] == nil {
-								idxs[_indexType][_indexName] = &idx{}
-							}
-							for _, from := range _idx.from {
-								idxs[_indexType][_indexName].from = append(idxs[_indexType][_indexName].from, field+"+"+from)
-							}
-							if _idx.to != "" {
-								idxs[_indexType][_indexName].to = field + "+" + _idx.to
-							}
-						}
 					}
 				}
 			}
