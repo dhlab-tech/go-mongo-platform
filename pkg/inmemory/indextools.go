@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -19,10 +20,20 @@ func getStringFieldValueByName(in any, field string) string {
 	} else {
 		p = p.FieldByName(field)
 	}
-	if p.Kind() == reflect.String {
-		return p.Interface().(string)
+	switch p.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fmt.Sprintf("%d", p.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return fmt.Sprintf("%d", p.Uint())
+	case reflect.Bool:
+		return fmt.Sprintf("%v", p.Bool())
+	case reflect.Float32, reflect.Float64:
+		return fmt.Sprintf("%f", p.Float())
+	case reflect.String:
+		return p.String()
+	default:
+		return fmt.Sprintf("%v", p.Interface())
 	}
-	return ""
 }
 
 func getStringFieldValuesByName(in any, fields []string) string {
