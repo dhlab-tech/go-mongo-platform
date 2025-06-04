@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type cache[T d] interface {
+type Cache[T d] interface {
 	All(ctx context.Context) (ids []string)
 	Get(ctx context.Context, id string) (b T, found bool)
 	GetByIndex(ctx context.Context, idx int) (r T, f bool)
@@ -20,14 +20,14 @@ type cache[T d] interface {
 	Delete(ctx context.Context, _id primitive.ObjectID)
 }
 
-// Cache ...
-type Cache[T d] struct {
+// cache ...
+type cache[T d] struct {
 	Idx
 	data map[string]T
 }
 
 // All ...
-func (c *Cache[T]) All(ctx context.Context) (ids []string) {
+func (c *cache[T]) All(ctx context.Context) (ids []string) {
 	c.RLock()
 	defer c.RUnlock()
 	ids = make([]string, len(c.data))
@@ -40,7 +40,7 @@ func (c *Cache[T]) All(ctx context.Context) (ids []string) {
 }
 
 // Get ...
-func (c *Cache[T]) Get(ctx context.Context, id string) (r T, f bool) {
+func (c *cache[T]) Get(ctx context.Context, id string) (r T, f bool) {
 	logger := zerolog.Ctx(ctx)
 	c.RLock()
 	defer c.RUnlock()
@@ -67,7 +67,7 @@ func (c *Cache[T]) Get(ctx context.Context, id string) (r T, f bool) {
 }
 
 // GetByIndex ...
-func (c *Cache[T]) GetByIndex(ctx context.Context, idx int) (r T, f bool) {
+func (c *cache[T]) GetByIndex(ctx context.Context, idx int) (r T, f bool) {
 	var (
 		id string
 	)
@@ -99,7 +99,7 @@ func (c *Cache[T]) GetByIndex(ctx context.Context, idx int) (r T, f bool) {
 }
 
 // Add ...
-func (c *Cache[T]) Add(ctx context.Context, v T) {
+func (c *cache[T]) Add(ctx context.Context, v T) {
 	c.Lock()
 	defer c.Unlock()
 	c.data[v.ID()] = v
@@ -107,7 +107,7 @@ func (c *Cache[T]) Add(ctx context.Context, v T) {
 }
 
 // Update ...
-func (c *Cache[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string) {
+func (c *cache[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string) {
 	c.Lock()
 	defer c.Unlock()
 	if it, ok := c.data[_id.Hex()]; ok {
@@ -127,7 +127,7 @@ func (c *Cache[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFi
 	}
 }
 
-func (c *Cache[T]) _upd(itv reflect.Value, v reflect.Value) {
+func (c *cache[T]) _upd(itv reflect.Value, v reflect.Value) {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		fieldValue := v.Field(i)
@@ -157,7 +157,7 @@ func (c *Cache[T]) _upd(itv reflect.Value, v reflect.Value) {
 }
 
 // Delete ...
-func (c *Cache[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+func (c *cache[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	c.Lock()
 	defer c.Unlock()
 	delete(c.data, _id.Hex())
@@ -170,8 +170,8 @@ func NewCache[T d](
 	itemsByIndex map[int]string,
 	indexByID map[string]int,
 	data map[string]T,
-) *Cache[T] {
-	return &Cache[T]{
+) Cache[T] {
+	return &cache[T]{
 		Idx: Idx{
 			maxIdx:       maxIdx,
 			itemsByIndex: itemsByIndex,

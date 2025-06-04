@@ -23,28 +23,28 @@ type d interface {
 	Version() *int64
 }
 
-type eventListener[T d] interface {
-	EventListener[T]
-	AddListener(listener EventListener[T], before bool) (idx int)
+type EventListener[T d] interface {
+	StreamEventListener[T]
+	AddListener(listener StreamEventListener[T], before bool) (idx int)
 }
 
-type inverseIndex[T d] interface {
-	EventListener[T]
+type InverseIndex[T d] interface {
+	StreamEventListener[T]
 	Get(ctx context.Context, val string) (ids []string)
 }
 
-type inverseUniqueIndex[T d] interface {
-	EventListener[T]
+type InverseUniqueIndex[T d] interface {
+	StreamEventListener[T]
 	Get(ctx context.Context, val ...string) (id string, found bool)
 }
 
-type sortedIndex[T d] interface {
-	EventListener[T]
+type SortedIndex[T d] interface {
+	StreamEventListener[T]
 	Intersect(in []string) (res []string)
 }
 
-type suffixIndex[T d] interface {
-	EventListener[T]
+type SuffixIndex[T d] interface {
+	StreamEventListener[T]
 	Search(ctx context.Context, text string) (items []string)
 	Rebuild(ctx context.Context)
 }
@@ -58,28 +58,28 @@ type MongoDeps struct {
 // Entity ...
 type Entity[T d] struct {
 	Collection      string
-	BeforeListeners []EventListener[T]
-	AfterListeners  []EventListener[T]
+	BeforeListeners []StreamEventListener[T]
+	AfterListeners  []StreamEventListener[T]
 	Notify          Notify[T]
 	Option          func(*CacheWithEventListener[T], *mongo.Mongo[T])
 }
 
 // CacheWithEventListener ...
 type CacheWithEventListener[T d] struct {
-	Cache                cache[T]
-	EventListener        eventListener[T]
+	Cache                Cache[T]
+	EventListener        EventListener[T]
 	Notify               Notify[T]
-	InverseIndexes       map[string]inverseIndex[T]
-	InverseUniqueIndexes map[string]inverseUniqueIndex[T]
-	SortedIndexes        map[string]sortedIndex[T]
-	SuffixIndexes        map[string]suffixIndex[T]
+	InverseIndexes       map[string]InverseIndex[T]
+	InverseUniqueIndexes map[string]InverseUniqueIndex[T]
+	SortedIndexes        map[string]SortedIndex[T]
+	SuffixIndexes        map[string]SuffixIndex[T]
 	AwaitNotify          Notify[T]
 }
 
 // NewCacheWithEventListener ...
 func NewCacheWithEventListener[T d](
-	beforeListeners []EventListener[T],
-	afterListeners []EventListener[T],
+	beforeListeners []StreamEventListener[T],
+	afterListeners []StreamEventListener[T],
 	notify Notify[T],
 ) *CacheWithEventListener[T] {
 	c := NewCache[T](0, map[int]string{}, map[string]int{}, map[string]T{})
@@ -94,10 +94,10 @@ func NewCacheWithEventListener[T d](
 		l.AddListener(notify, false)
 	}
 	// init indexes
-	inverseIndexes := map[string]inverseIndex[T]{}
-	inverseUniqueIndexes := map[string]inverseUniqueIndex[T]{}
-	sortedIndexes := map[string]sortedIndex[T]{}
-	suffixIndexes := map[string]suffixIndex[T]{}
+	inverseIndexes := map[string]InverseIndex[T]{}
+	inverseUniqueIndexes := map[string]InverseUniqueIndex[T]{}
+	sortedIndexes := map[string]SortedIndex[T]{}
+	suffixIndexes := map[string]SuffixIndex[T]{}
 	var instance T
 	t := reflect.TypeOf(instance)
 	var v reflect.Value
@@ -141,6 +141,7 @@ func NewCacheWithEventListener[T d](
 		Notify:               notify,
 		InverseIndexes:       inverseIndexes,
 		InverseUniqueIndexes: inverseUniqueIndexes,
+		SuffixIndexes:        suffixIndexes,
 		SortedIndexes:        sortedIndexes,
 		AwaitNotify:          awaitNotify,
 	}

@@ -11,12 +11,12 @@ import (
 
 type Suffix[T d] struct {
 	M
-	cache cache[T]
+	cache Cache[T]
 	from  []string
 	to    *string
 }
 
-func NewSuffix[T d](index M, cache cache[T], from []string, to *string) *Suffix[T] {
+func NewSuffix[T d](index M, cache Cache[T], from []string, to *string) SuffixIndex[T] {
 	return &Suffix[T]{
 		M:     index,
 		cache: cache,
@@ -91,7 +91,7 @@ type suffixTree interface {
 
 type m[T d] struct {
 	sync.RWMutex
-	cache cache[T]
+	cache Cache[T]
 	tree  suffixTree
 	old   suffixTree
 }
@@ -165,7 +165,7 @@ func (s *m[T]) S(ctx context.Context, text string) (items []string) {
 }
 
 func NewM[T d](
-	cache cache[T],
+	cache Cache[T],
 	tree suffixTree,
 	old suffixTree,
 ) M {
@@ -375,7 +375,7 @@ func NewPool() *Pool {
 	}
 }
 
-func NewSuffixIndex[T d](cache cache[T], btreeDegree int, from []string, to *string) *Suffix[T] {
+func NewSuffixIndex[T d](cache Cache[T], btreeDegree int, from []string, to *string) SuffixIndex[T] {
 	sorterIntersector := NewIntersect()
 	suffixPool := NewPool()
 	return NewSuffix(

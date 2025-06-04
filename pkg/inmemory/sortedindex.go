@@ -21,17 +21,17 @@ func (s item) Less(than btree.Item) bool {
 	return false
 }
 
-type SortedIndex[T d] struct {
+type sortedIndex[T d] struct {
 	sync.RWMutex
 	idx   *btree.BTree
-	cache cache[T]
+	cache Cache[T]
 	ids   []string
 	from  []string
 	to    *string
 }
 
 // Intersect ...
-func (s *SortedIndex[T]) Intersect(in []string) (res []string) {
+func (s *sortedIndex[T]) Intersect(in []string) (res []string) {
 	t := make(map[string]struct{}, len(in))
 	for _, v := range in {
 		t[v] = struct{}{}
@@ -46,7 +46,7 @@ func (s *SortedIndex[T]) Intersect(in []string) (res []string) {
 }
 
 // Add ...
-func (s *SortedIndex[T]) Add(ctx context.Context, it T) {
+func (s *sortedIndex[T]) Add(ctx context.Context, it T) {
 	s.Lock()
 	defer s.Unlock()
 	to := it.ID()
@@ -65,7 +65,7 @@ func (s *SortedIndex[T]) Add(ctx context.Context, it T) {
 }
 
 // Update ...
-func (s *SortedIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+func (s *sortedIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
 	s.Lock()
 	defer s.Unlock()
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
@@ -87,7 +87,7 @@ func (s *SortedIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upda
 }
 
 // Delete ...
-func (s *SortedIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+func (s *sortedIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {
@@ -103,7 +103,7 @@ func (s *SortedIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	}
 }
 
-func (s *SortedIndex[T]) fill() {
+func (s *sortedIndex[T]) fill() {
 	ids := make([]string, s.idx.Len())
 	s.idx.Ascend(func(i btree.Item) bool {
 		switch a := i.(type) {
@@ -118,13 +118,13 @@ func (s *SortedIndex[T]) fill() {
 
 // NewSortedIndex ...
 func NewSortedIndex[T d](
-	cache cache[T],
+	cache Cache[T],
 	btreeDegree int,
 	ids []string,
 	from []string,
 	to *string,
-) *SortedIndex[T] {
-	return &SortedIndex[T]{
+) SortedIndex[T] {
+	return &sortedIndex[T]{
 		ids:   ids,
 		idx:   btree.New(btreeDegree),
 		cache: cache,

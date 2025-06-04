@@ -7,21 +7,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type InverseIndex[T d] struct {
+type inverseIndex[T d] struct {
 	sync.RWMutex
 	data  map[string][]string
-	cache cache[T]
+	cache Cache[T]
 	from  []string
 	to    *string
 }
 
 func NewInverseIndex[T d](
 	data map[string][]string,
-	cache cache[T],
+	cache Cache[T],
 	from []string,
 	to *string,
-) *InverseIndex[T] {
-	return &InverseIndex[T]{
+) InverseIndex[T] {
+	return &inverseIndex[T]{
 		data:  data,
 		cache: cache,
 		from:  from,
@@ -29,14 +29,14 @@ func NewInverseIndex[T d](
 	}
 }
 
-func (s *InverseIndex[T]) Get(ctx context.Context, val string) (ids []string) {
+func (s *inverseIndex[T]) Get(ctx context.Context, val string) (ids []string) {
 	s.RLock()
 	defer s.RUnlock()
 	return s.data[val]
 }
 
 // Add ...
-func (s *InverseIndex[T]) Add(ctx context.Context, it T) {
+func (s *inverseIndex[T]) Add(ctx context.Context, it T) {
 	s.Lock()
 	defer s.Unlock()
 	from := getStringFieldValuesByName(it, s.from)
@@ -53,7 +53,7 @@ func (s *InverseIndex[T]) Add(ctx context.Context, it T) {
 }
 
 // Update ...
-func (s *InverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
 	s.Lock()
 	defer s.Unlock()
 	updatedVal := getStringFieldValuesByName(updatedFields, s.from)
@@ -74,7 +74,7 @@ func (s *InverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 }
 
 // Delete ...
-func (s *InverseIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+func (s *inverseIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {

@@ -6,8 +6,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// EventListener ...
-type EventListener[T d] interface {
+// StreamEventListener ...
+type StreamEventListener[T d] interface {
 	Add(ctx context.Context, v T)
 	Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string)
 	Delete(ctx context.Context, _id primitive.ObjectID)
@@ -15,9 +15,9 @@ type EventListener[T d] interface {
 
 // Listener ...
 type Listener[T d] struct {
-	cache           cache[T]
-	listeners       []EventListener[T]
-	beforeListeners []EventListener[T]
+	cache           Cache[T]
+	listeners       []StreamEventListener[T]
+	beforeListeners []StreamEventListener[T]
 }
 
 // Add ...
@@ -54,7 +54,7 @@ func (c *Listener[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 }
 
 // AddListener ...
-func (c *Listener[T]) AddListener(listener EventListener[T], before bool) (idx int) {
+func (c *Listener[T]) AddListener(listener StreamEventListener[T], before bool) (idx int) {
 	if before {
 		c.beforeListeners = append(c.beforeListeners, listener)
 		return
@@ -64,10 +64,10 @@ func (c *Listener[T]) AddListener(listener EventListener[T], before bool) (idx i
 }
 
 // NewListener ...
-func NewListener[T d](cache cache[T]) *Listener[T] {
+func NewListener[T d](cache Cache[T]) *Listener[T] {
 	return &Listener[T]{
 		cache:           cache,
-		listeners:       []EventListener[T]{},
-		beforeListeners: []EventListener[T]{},
+		listeners:       []StreamEventListener[T]{},
+		beforeListeners: []StreamEventListener[T]{},
 	}
 }

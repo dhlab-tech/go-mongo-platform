@@ -10,21 +10,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type InverseUniqIndex[T d] struct {
+type inverseUniqueIndex[T d] struct {
 	sync.RWMutex
 	data  map[string]string
-	cache cache[T]
+	cache Cache[T]
 	from  []string
 	to    *string
 }
 
 func NewInverseUniqIndex[T d](
 	data map[string]string,
-	cache cache[T],
+	cache Cache[T],
 	field []string,
 	to *string,
-) *InverseUniqIndex[T] {
-	return &InverseUniqIndex[T]{
+) InverseUniqueIndex[T] {
+	return &inverseUniqueIndex[T]{
 		data:  data,
 		cache: cache,
 		from:  field,
@@ -32,7 +32,7 @@ func NewInverseUniqIndex[T d](
 	}
 }
 
-func (s *InverseUniqIndex[T]) Get(ctx context.Context, val ...string) (id string, found bool) {
+func (s *inverseUniqueIndex[T]) Get(ctx context.Context, val ...string) (id string, found bool) {
 	s.RLock()
 	defer s.RUnlock()
 	id, found = s.data[strings.Join(val, "")]
@@ -40,7 +40,7 @@ func (s *InverseUniqIndex[T]) Get(ctx context.Context, val ...string) (id string
 }
 
 // Add ...
-func (s *InverseUniqIndex[T]) Add(ctx context.Context, it T) {
+func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Any("it type", reflect.TypeOf(it).Name()).Msg("InverseUniqIndex:Add:start")
 	s.Lock()
@@ -64,7 +64,7 @@ func (s *InverseUniqIndex[T]) Add(ctx context.Context, it T) {
 }
 
 // Update ...
-func (s *InverseUniqIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+func (s *inverseUniqueIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
 	s.Lock()
 	defer s.Unlock()
 	updatedVal := getStringFieldValuesByName(updatedFields, s.from)
@@ -85,7 +85,7 @@ func (s *InverseUniqIndex[T]) Update(ctx context.Context, id primitive.ObjectID,
 }
 
 // Delete ...
-func (s *InverseUniqIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+func (s *inverseUniqueIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {

@@ -10,7 +10,7 @@ import (
 
 // Notify ...
 type Notify[T d] interface {
-	EventListener[T]
+	StreamEventListener[T]
 	AddListenerCreate(id string, c func()) string
 	AddListenerUpdate(id string, c func()) string
 	AddListenerDelete(id string, c func()) string
