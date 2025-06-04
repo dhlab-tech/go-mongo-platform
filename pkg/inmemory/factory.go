@@ -14,21 +14,29 @@ type streamListener = interface {
 	Listen(ctx context.Context, change []byte) (err error)
 }
 
-type InMemory[T d] struct {
+type InMemory[T d] interface {
+	GetCacheWithEventListener() *CacheWithEventListener[T]
+	GetMongo() *mongo.Mongo[T]
+	AwaitCreate(ctx context.Context, ps T) (id string, err error)
+	AwaitUpdate(ctx context.Context, ps T) (res T, err error)
+	AwaitDelete(ctx context.Context, ps T) (err error)
+}
+
+type inMemory[T d] struct {
 	CacheWithEventListener *CacheWithEventListener[T]
 	Mongo                  *mongo.Mongo[T]
 }
 
-func (im *InMemory[T]) GetCacheWithEventListener() *CacheWithEventListener[T] {
+func (im *inMemory[T]) GetCacheWithEventListener() *CacheWithEventListener[T] {
 	return im.CacheWithEventListener
 }
 
-func (im *InMemory[T]) GetMongo() *mongo.Mongo[T] {
+func (im *inMemory[T]) GetMongo() *mongo.Mongo[T] {
 	return im.Mongo
 }
 
 // AwaitCreate ...
-func (p *InMemory[T]) AwaitCreate(ctx context.Context, ps T) (id string, err error) {
+func (p *inMemory[T]) AwaitCreate(ctx context.Context, ps T) (id string, err error) {
 	ch := make(chan struct{})
 	defer close(ch)
 	ui := p.CacheWithEventListener.AwaitNotify.AddListenerCreate(ps.ID(), func() {
@@ -44,7 +52,7 @@ func (p *InMemory[T]) AwaitCreate(ctx context.Context, ps T) (id string, err err
 }
 
 // AwaitUpdate ...
-func (p *InMemory[T]) AwaitUpdate(ctx context.Context, ps T) (res T, err error) {
+func (p *inMemory[T]) AwaitUpdate(ctx context.Context, ps T) (res T, err error) {
 	ch := make(chan struct{})
 	defer close(ch)
 	ui := p.CacheWithEventListener.AwaitNotify.AddListenerUpdate(ps.ID(), func() {
@@ -60,7 +68,7 @@ func (p *InMemory[T]) AwaitUpdate(ctx context.Context, ps T) (res T, err error) 
 }
 
 // AwaitDelete ...
-func (p *InMemory[T]) AwaitDelete(ctx context.Context, ps T) (err error) {
+func (p *inMemory[T]) AwaitDelete(ctx context.Context, ps T) (err error) {
 	ch := make(chan struct{})
 	defer close(ch)
 	ui := p.CacheWithEventListener.AwaitNotify.AddListenerDelete(ps.ID(), func() {
@@ -76,7 +84,7 @@ func (p *InMemory[T]) AwaitDelete(ctx context.Context, ps T) (err error) {
 }
 
 // NewInMemory ...
-func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entityDeps Entity[T]) (*InMemory[T], error) {
+func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entityDeps Entity[T]) (InMemory[T], error) {
 	if entityDeps.Collection == "" {
 		return nil, nil
 	}
@@ -104,7 +112,7 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 	for _, it := range its {
 		im.EventListener.Add(ctx, it)
 	}
-	return &InMemory[T]{
+	return &inMemory[T]{
 		CacheWithEventListener: im,
 		Mongo:                  m,
 	}, nil
