@@ -32,6 +32,7 @@ func getStringFieldValueByName(in any, field string) string {
 	case reflect.String:
 		return p.String()
 	default:
+		fmt.Println("HEHE100", in, p, field)
 		if !p.IsNil() {
 			return fmt.Sprintf("%v", p.Interface())
 		}
