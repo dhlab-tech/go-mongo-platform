@@ -16,7 +16,12 @@ func getStringFieldValueByName(in any, field string) string {
 		return getStringFieldValueByName(p.FieldByName(_field[0]).Interface(), strings.Join(_field[1:], "+"))
 	}
 	if p.FieldByName(field).Kind() == reflect.Ptr {
-		p = p.FieldByName(field).Elem()
+		if !p.FieldByName(field).IsNil() {
+			p = p.FieldByName(field).Elem()
+		} else {
+			_t := reflect.TypeOf(p.FieldByName(field).Interface())
+			p = reflect.New(_t.Elem()).Elem()
+		}
 	} else {
 		p = p.FieldByName(field)
 	}
