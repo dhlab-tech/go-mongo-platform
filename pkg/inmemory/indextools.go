@@ -32,8 +32,11 @@ func getStringFieldValueByName(in any, field string) string {
 	case reflect.String:
 		return p.String()
 	default:
-		return fmt.Sprintf("%v", p.Interface())
+		if !p.IsNil() {
+			return fmt.Sprintf("%v", p.Interface())
+		}
 	}
+	return ""
 }
 
 func getStringFieldValuesByName(in any, fields []string) string {
