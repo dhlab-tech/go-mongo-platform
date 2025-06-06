@@ -128,12 +128,14 @@ func (p *Processor[T]) prepareCreate(ctx context.Context, ps reflect.Value) (pre
 			if uft.Field(i).Tag.Get("bson") == "-" {
 				continue
 			}
-			pr, prDoc, err := p.prepareCreateForStruct(ctx, ps.Field(i), uft.Field(i))
-			if err != nil {
-				continue
+			if !(ps.Field(i).Kind() == reflect.Map && ps.Field(i).IsNil()) {
+				pr, prDoc, err := p.prepareCreateForStruct(ctx, ps.Field(i), uft.Field(i))
+				if err != nil {
+					continue
+				}
+				prepared.Field(i).Set(pr)
+				doc = append(doc, prDoc...)
 			}
-			prepared.Field(i).Set(pr)
-			doc = append(doc, prDoc...)
 		}
 	default:
 		prepared = ps
@@ -513,13 +515,15 @@ func (p *Processor[T]) prepareUpdate(ctx context.Context, _id string, newData, o
 				prField reflect.Value
 				prSet   bson.D
 			)
-			prField, prSet, err = p.prepareUpdateForStruct(ctx, _id, newData.Field(i), oldData.Field(i), uft.Field(i))
-			if err != nil {
-				continue
-			}
-			prepared.Field(i).Set(prField)
-			if len(prSet) > 0 {
-				set = append(set, prSet...)
+			if !(newData.Field(i).Kind() == reflect.Map && newData.Field(i).IsNil()) {
+				prField, prSet, err = p.prepareUpdateForStruct(ctx, _id, newData.Field(i), oldData.Field(i), uft.Field(i))
+				if err != nil {
+					continue
+				}
+				prepared.Field(i).Set(prField)
+				if len(prSet) > 0 {
+					set = append(set, prSet...)
+				}
 			}
 		}
 	}

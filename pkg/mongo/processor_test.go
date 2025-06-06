@@ -75,6 +75,7 @@ type V struct {
 	Float    *float64               `bson:"float"`
 	Slice    []string               `bson:"slice"`
 	Map      map[string]interface{} `bson:"map"`
+	Map2     map[string]string      `bson:"map2"`
 	S        S                      `bson:"s"`
 	S1       S                      `bson:"s1"`
 	S2       S                      `bson:"s2"`
