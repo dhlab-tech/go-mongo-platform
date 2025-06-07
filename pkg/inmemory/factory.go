@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dhlab-tech/go-mongo-platform/pkg/mongo"
 )
@@ -61,6 +62,9 @@ func (p *inMemory[T]) AwaitUpdate(ctx context.Context, ps T) (res T, err error) 
 	res, err = p.Mongo.Processor.Update(ctx, ps)
 	if err != nil {
 		p.CacheWithEventListener.AwaitNotify.DeleteListenerUpdate(ps.ID(), ui)
+		if errors.Is(err, mongo.ErrNothingToUpdate) {
+			err = nil
+		}
 		return
 	}
 	<-ch
