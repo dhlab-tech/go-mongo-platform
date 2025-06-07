@@ -49,6 +49,7 @@ func (p *inMemory[T]) AwaitCreate(ctx context.Context, ps T) (id string, err err
 		return
 	}
 	<-ch
+	id = ps.ID()
 	return
 }
 
