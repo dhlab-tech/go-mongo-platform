@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -42,7 +41,6 @@ func (s *inverseUniqueIndex[T]) Get(ctx context.Context, val ...string) (id stri
 // Add ...
 func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Any("it type", reflect.TypeOf(it).Name()).Msg("InverseUniqIndex:Add:start")
 	s.Lock()
 	defer s.Unlock()
 	to := it.ID()
@@ -60,11 +58,12 @@ func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 		Any("from", s.from).
 		Any("fromVal", fromVal).
 		Any("to", to).
-		Msg("InverseUniqIndex:Add:end")
+		Msg("InverseUniqIndex:Add")
 }
 
 // Update ...
 func (s *inverseUniqueIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
 	updatedVal := getStringFieldValuesByName(updatedFields, s.from)
@@ -81,11 +80,17 @@ func (s *inverseUniqueIndex[T]) Update(ctx context.Context, id primitive.ObjectI
 			delete(s.data, fromVal)
 			s.data[updatedVal] = to
 		}
+		logger.Debug().
+			Any("from", s.from).
+			Any("fromVal", fromVal).
+			Any("to", to).
+			Msg("InverseUniqIndex:Update")
 	}
 }
 
 // Delete ...
 func (s *inverseUniqueIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {
@@ -93,6 +98,10 @@ func (s *inverseUniqueIndex[T]) Delete(ctx context.Context, _id primitive.Object
 		if fromVal != "" {
 			delete(s.data, fromVal)
 		}
+		logger.Debug().
+			Any("from", s.from).
+			Any("fromVal", fromVal).
+			Msg("InverseUniqIndex:Delete")
 	}
 }
 
