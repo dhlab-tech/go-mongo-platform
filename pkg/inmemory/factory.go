@@ -3,6 +3,7 @@ package inmemory
 import (
 	"context"
 	"errors"
+	"reflect"
 
 	"github.com/dhlab-tech/go-mongo-platform/pkg/mongo"
 )
@@ -18,6 +19,7 @@ type streamListener = interface {
 type InMemory[T d] interface {
 	GetCacheWithEventListener() *CacheWithEventListener[T]
 	GetMongo() *mongo.Mongo[T]
+	Spawn(ctx context.Context) T
 	AwaitCreate(ctx context.Context, ps T) (id string, err error)
 	AwaitUpdate(ctx context.Context, ps T) (res T, err error)
 	AwaitDelete(ctx context.Context, ps T) (err error)
@@ -26,6 +28,14 @@ type InMemory[T d] interface {
 type inMemory[T d] struct {
 	CacheWithEventListener *CacheWithEventListener[T]
 	Mongo                  *mongo.Mongo[T]
+}
+
+func (im *inMemory[T]) Spawn(ctx context.Context) (instance T) {
+	_t := reflect.TypeOf(instance)
+	if _t.Kind() == reflect.Ptr {
+		return reflect.New(_t.Elem()).Interface().(T)
+	}
+	return reflect.New(_t).Elem().Interface().(T)
 }
 
 func (im *inMemory[T]) GetCacheWithEventListener() *CacheWithEventListener[T] {
