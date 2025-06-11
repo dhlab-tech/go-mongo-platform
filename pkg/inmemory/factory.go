@@ -107,8 +107,12 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 		im.EventListener,
 	)
 	stream.AddListener(ctx, deps.Db, entityDeps.Collection, m.Listener)
+	i := inMemory[T]{
+		CacheWithEventListener: im,
+		Mongo:                  m,
+	}
 	if entityDeps.Option != nil {
-		entityDeps.Option(im, m)
+		entityDeps.Option(&i)
 	}
 	its, err := m.Searcher.All(ctx)
 	if err != nil {
@@ -117,8 +121,5 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 	for _, it := range its {
 		im.EventListener.Add(ctx, it)
 	}
-	return &inMemory[T]{
-		CacheWithEventListener: im,
-		Mongo:                  m,
-	}, nil
+	return &i, nil
 }
