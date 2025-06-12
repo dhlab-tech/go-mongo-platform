@@ -96,12 +96,20 @@ func (p *Processor[T]) Delete(ctx context.Context, id string) (err error) {
 
 // PrepareCreate ...
 func (p *Processor[T]) PrepareCreate(ctx context.Context, ps T) (prepared T, doc bson.D, err error) {
+	logger := zerolog.Ctx(ctx)
 	var pr reflect.Value
 	in := reflect.ValueOf(ps)
+	logger.Debug().Any("type", reflect.TypeOf(ps).Name()).Msg("Processor:PrepareCreate")
 	pr, doc, err = p.prepareCreate(ctx, in)
 	if err != nil {
 		return
 	}
+	logger.Debug().
+		Str("_id", ps.ID()).
+		Any("item prepared for create", pr).
+		Any("type", reflect.TypeOf(prepared).Name()).
+		Any("doc set", doc).
+		Msg("Processor:PrepareCreate")
 	return pr.Interface().(T), doc, nil
 }
 
@@ -480,12 +488,17 @@ func (p *Processor[T]) PrepareUpdate(ctx context.Context, ps T) (prepared T, set
 		err = ErrNotFound
 		return
 	}
-	logger.Debug().Any("item from cache", prepared).Msg("Processor:PrepareUpdate")
+	logger.Debug().Any("item from cache", prepared).Any("type", reflect.TypeOf(prepared).Name()).Msg("Processor:PrepareUpdate")
 	pr, s, err := p.prepareUpdate(ctx, ps.ID(), reflect.ValueOf(ps), reflect.ValueOf(prepared))
 	if err != nil {
 		return
 	}
-	logger.Debug().Str("_id", ps.ID()).Any("item prepared for update", pr).Any("doc set", s).Msg("Processor:PrepareUpdate")
+	logger.Debug().
+		Str("_id", ps.ID()).
+		Any("item prepared for update", pr).
+		Any("type", reflect.TypeOf(prepared).Name()).
+		Any("doc set", s).
+		Msg("Processor:PrepareUpdate")
 	return pr.Interface().(T), s, nil, nil
 }
 
