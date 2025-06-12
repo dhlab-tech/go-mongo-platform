@@ -45,20 +45,11 @@ func (c *cache[T]) Get(ctx context.Context, id string) (r T, f bool) {
 	c.RLock()
 	defer c.RUnlock()
 	if d, found := c.data[id]; found {
-		r = reflect.New(reflect.TypeOf(r).Elem()).Interface().(T)
-		v1 := reflect.ValueOf(d).Elem()
-		v2 := reflect.ValueOf(r).Elem()
-		for i := 0; i < v1.NumField(); i++ {
-			if v1.Field(i).Kind() == reflect.Ptr ||
-				v1.Field(i).Kind() == reflect.Slice ||
-				v1.Field(i).Kind() == reflect.Map {
-				if !v1.Field(i).IsNil() {
-					v2.Field(i).Set(v1.Field(i))
-				}
-				continue
-			}
-			v2.Field(i).Set(v1.Field(i))
+		ps, err := c.prepareCreate(ctx, reflect.ValueOf(d))
+		if err != nil {
+			return
 		}
+		r = ps.Interface().(T)
 		f = found
 		logger.Debug().Any("cached item", r).Msg("Cache:Get")
 		return
@@ -74,22 +65,7 @@ func (c *cache[T]) GetByIndex(ctx context.Context, idx int) (r T, f bool) {
 	c.RLock()
 	defer c.RUnlock()
 	if id, f = c.GetIDByIndex(idx); f {
-		if m, found := c.data[id]; found {
-			r = reflect.New(reflect.TypeOf(r).Elem()).Interface().(T)
-			v1 := reflect.ValueOf(m).Elem()
-			v2 := reflect.ValueOf(r).Elem()
-			for i := 0; i < v1.NumField(); i++ {
-				if v1.Field(i).Kind() == reflect.Ptr ||
-					v1.Field(i).Kind() == reflect.Slice ||
-					v1.Field(i).Kind() == reflect.Map {
-					if !v1.Field(i).IsNil() {
-						v2.Field(i).Set(v1.Field(i))
-					}
-					continue
-				}
-				v2.Field(i).Set(v1.Field(i))
-			}
-			f = found
+		if r, f = c.Get(ctx, id); !f {
 			return
 		}
 		c.deleteByID(id)
@@ -162,6 +138,186 @@ func (c *cache[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	defer c.Unlock()
 	delete(c.data, _id.Hex())
 	c.deleteByID(_id.Hex())
+}
+
+func (p *cache[T]) prepareCreate(ctx context.Context, ps reflect.Value) (prepared reflect.Value, err error) {
+	switch ps.Kind() {
+	case reflect.Ptr:
+		if ps.IsNil() {
+			prepared = ps
+			return
+		}
+		pr, rerr := p.prepareCreate(ctx, ps.Elem())
+		if rerr != nil {
+			err = rerr
+			return
+		}
+		prepared = pr
+		return prepared.Addr(), nil
+	case reflect.Struct:
+		_prepared := reflect.New(ps.Type()).Interface()
+		prepared = reflect.ValueOf(_prepared).Elem()
+		uft := reflect.TypeOf(ps.Interface())
+		for i := 0; i < ps.NumField(); i++ {
+			if uft.Field(i).Tag.Get("bson") == "-" {
+				continue
+			}
+			if !(ps.Field(i).Kind() == reflect.Map && ps.Field(i).IsNil()) {
+				pr, err := p.prepareCreateForStruct(ctx, ps.Field(i), uft.Field(i))
+				if err != nil {
+					continue
+				}
+				prepared.Field(i).Set(pr)
+			}
+		}
+	default:
+		prepared = ps
+	}
+	return
+}
+
+func (p *cache[T]) prepareCreateForStruct(ctx context.Context, fieldValue reflect.Value, fieldType reflect.StructField) (prepared reflect.Value, err error) {
+	switch fieldValue.Kind() {
+	case reflect.Ptr:
+		if fieldValue.IsNil() {
+			prepared = fieldValue
+			return
+		}
+		_prepared, _err := p.prepareCreateForStruct(ctx, fieldValue.Elem(), fieldType)
+		if _err != nil {
+			err = _err
+			return
+		}
+		prepared = _prepared.Addr()
+	case reflect.Array:
+		if p.isPrimitiveObjectID(fieldValue.Type()) {
+			prepared = fieldValue
+			return
+		}
+		prepared, err = p.setArray(fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Slice:
+		prepared, err = p.setSlice(ctx, fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Map:
+		prepared, err = p.setMap(fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Struct:
+		if p.isDecimalType(fieldValue.Type()) {
+			prepared = fieldValue
+			return
+		}
+		prepared, err = p.prepareCreate(ctx, fieldValue)
+		if err != nil {
+			return
+		}
+	default:
+		prepared = fieldValue
+	}
+	return
+}
+
+func (p *cache[T]) prepareCreateForSlice(ctx context.Context, fieldValue reflect.Value) (prepared reflect.Value, err error) {
+	switch fieldValue.Kind() {
+	case reflect.Ptr:
+		if fieldValue.IsNil() {
+			prepared = fieldValue
+			return
+		}
+		_prepared, _err := p.prepareCreateForSlice(ctx, fieldValue.Elem())
+		if _err != nil {
+			err = _err
+			return
+		}
+		prepared = _prepared.Addr()
+	case reflect.Array:
+		if p.isPrimitiveObjectID(fieldValue.Type()) {
+			prepared = fieldValue
+			return
+		}
+		prepared, err = p.setArray(fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Slice:
+		if p.isJsonRawMessage(fieldValue.Type()) {
+			prepared = fieldValue
+			return
+		}
+		prepared, err = p.setSlice(ctx, fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Map:
+		prepared, err = p.setMap(fieldValue)
+		if err != nil {
+			return
+		}
+	case reflect.Struct:
+		if p.isDecimalType(fieldValue.Type()) {
+			prepared = fieldValue
+			return
+		}
+		prepared, err = p.prepareCreate(ctx, fieldValue)
+		if err != nil {
+			return
+		}
+	default:
+		prepared = fieldValue
+	}
+	return
+}
+
+func (p *cache[T]) setArray(ps reflect.Value) (prepared reflect.Value, err error) {
+	prepared = reflect.New(ps.Type()).Elem()
+	for i := 0; i < ps.Len(); i++ {
+		prepared.Index(i).Set(ps.Index(i))
+	}
+	return
+}
+
+func (p *cache[T]) setSlice(ctx context.Context, ps reflect.Value) (prepared reflect.Value, err error) {
+	if ps.IsNil() {
+		return ps, nil
+	}
+	prepared = reflect.MakeSlice(ps.Type(), ps.Len(), ps.Cap())
+	for j := 0; j < ps.Len(); j++ {
+		_prepared, err := p.prepareCreateForSlice(ctx, ps.Index(j))
+		if err != nil {
+			return prepared, err
+		}
+		prepared.Index(j).Set(_prepared)
+	}
+	return
+}
+
+func (p *cache[T]) setMap(ps reflect.Value) (prepared reflect.Value, err error) {
+	if !ps.IsNil() {
+		prepared = reflect.MakeMap(ps.Type())
+		for _, key := range ps.MapKeys() {
+			value := ps.MapIndex(key)
+			prepared.SetMapIndex(key, value)
+		}
+	}
+	return
+}
+
+func (p *cache[T]) isDecimalType(t reflect.Type) bool {
+	return strings.Contains(t.String(), "Decimal")
+}
+
+func (p *cache[T]) isPrimitiveObjectID(t reflect.Type) bool {
+	return strings.Compare(t.String(), "primitive.ObjectID") == 0
+}
+
+func (p *cache[T]) isJsonRawMessage(t reflect.Type) bool {
+	return strings.Compare(t.String(), "json.RawMessage") == 0
 }
 
 // NewCache ...
