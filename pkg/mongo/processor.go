@@ -100,19 +100,30 @@ func (p *Processor[T]) PrepareCreate(ctx context.Context, ps T) (prepared T, doc
 	var pr reflect.Value
 	in := reflect.ValueOf(ps)
 	var _t reflect.Type
+	var _v interface{}
 	if in.Kind() == reflect.Ptr {
+		_v = in.Elem().Interface()
 		_t = reflect.TypeOf(in.Elem().Interface())
 	} else {
+		_v = in.Interface()
 		_t = reflect.TypeOf(in.Interface())
 	}
-	logger.Debug().Any("type", _t.Name()).Msg("Processor:PrepareCreate")
+	logger.Debug().
+		Any("item for create", _v).
+		Any("type", _t.Name()).
+		Msg("Processor:PrepareCreate")
 	pr, doc, err = p.prepareCreate(ctx, in)
 	if err != nil {
 		return
 	}
+	if in.Kind() == reflect.Ptr {
+		_v = pr.Elem().Interface()
+	} else {
+		_v = pr.Interface()
+	}
 	logger.Debug().
 		Str("_id", ps.ID()).
-		Any("item prepared for create", pr).
+		Any("item prepared for create", _v).
 		Any("type", _t.Name()).
 		Any("doc set", doc).
 		Msg("Processor:PrepareCreate")
