@@ -99,7 +99,13 @@ func (p *Processor[T]) PrepareCreate(ctx context.Context, ps T) (prepared T, doc
 	logger := zerolog.Ctx(ctx)
 	var pr reflect.Value
 	in := reflect.ValueOf(ps)
-	logger.Debug().Any("type", reflect.TypeOf(ps).Name()).Msg("Processor:PrepareCreate")
+	var _t reflect.Type
+	if in.Kind() == reflect.Ptr {
+		_t = reflect.TypeOf(in.Elem().Interface())
+	} else {
+		_t = reflect.TypeOf(in.Interface())
+	}
+	logger.Debug().Any("type", _t.Name()).Msg("Processor:PrepareCreate")
 	pr, doc, err = p.prepareCreate(ctx, in)
 	if err != nil {
 		return
@@ -107,7 +113,7 @@ func (p *Processor[T]) PrepareCreate(ctx context.Context, ps T) (prepared T, doc
 	logger.Debug().
 		Str("_id", ps.ID()).
 		Any("item prepared for create", pr).
-		Any("type", reflect.TypeOf(prepared).Name()).
+		Any("type", _t.Name()).
 		Any("doc set", doc).
 		Msg("Processor:PrepareCreate")
 	return pr.Interface().(T), doc, nil
