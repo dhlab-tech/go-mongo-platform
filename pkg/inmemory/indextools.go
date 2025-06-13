@@ -52,7 +52,12 @@ import (
 // 	return strings.Join(res, "")
 // }
 
-func updateStringFieldValueByName(in any, field string) *string {
+func updateStringFieldValueByName(in any, field string) (r *string) {
+	defer func() {
+		if r != nil && *r == "" {
+			r = nil
+		}
+	}()
 	p := reflect.ValueOf(in)
 	if p.Kind() == reflect.Ptr {
 		return updateStringFieldValueByName(p.Elem().Interface(), field)
