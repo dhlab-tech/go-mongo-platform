@@ -132,3 +132,88 @@ func NewSortedIndex[T d](
 		to:    to,
 	}
 }
+
+type sorted[T d] struct {
+	sync.RWMutex
+	idx *btree.BTree
+	ids []string
+}
+
+func NewSorted[T d](idx *btree.BTree, ids []string) *sorted[T] {
+	return &sorted[T]{
+		idx: idx,
+		ids: ids,
+	}
+}
+
+func BuildSorted[T d]() *sorted[T] {
+	return NewSorted[T](
+		btree.New(1000),
+		[]string{},
+	)
+}
+
+func (s *sorted[T]) Intersect(in []string) (res []string) {
+	t := make(map[string]struct{}, len(in))
+	for _, v := range in {
+		t[v] = struct{}{}
+	}
+	res = make([]string, 0, len(in))
+	for _, d := range s.ids {
+		if _, ok := t[d]; ok {
+			res = append(res, d)
+		}
+	}
+	return
+}
+
+func (s *sorted[T]) Add(ctx context.Context, id string, title string) {
+	s.Lock()
+	f := item{
+		id:   id,
+		text: title,
+	}
+	if s.idx.Get(f) != nil {
+		return
+	}
+	s.idx.ReplaceOrInsert(f)
+	s.Unlock()
+	s.fill()
+}
+
+// Update ...
+func (s *sorted[T]) Update(ctx context.Context, id string, old string, title string) {
+	s.Lock()
+	f := item{}
+	f.id = id
+	f.text = old
+	s.idx.Delete(f)
+	f.text = title
+	s.idx.ReplaceOrInsert(f)
+	s.Unlock()
+	s.fill()
+}
+
+// Delete ...
+func (s *sorted[T]) Delete(ctx context.Context, id string, title string) {
+	s.Lock()
+	s.idx.Delete(item{
+		id:   id,
+		text: title,
+	})
+	s.Unlock()
+	s.fill()
+}
+
+func (s *sorted[T]) fill() {
+	ids := make([]string, s.idx.Len())
+	s.idx.Ascend(func(i btree.Item) bool {
+		switch a := i.(type) {
+		case item:
+			ids = append(ids, a.id)
+			return true
+		}
+		return false
+	})
+	s.ids = ids
+}
