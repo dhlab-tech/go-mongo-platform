@@ -94,7 +94,7 @@ func updateStringFieldValuesByName(in any, fields []string) *string {
 	for _, f := range fields {
 		r := updateStringFieldValueByName(in, f)
 		if r != nil {
-			res = append(res)
+			res = append(res, *r)
 		}
 	}
 	return ptr(strings.Join(res, ""))
