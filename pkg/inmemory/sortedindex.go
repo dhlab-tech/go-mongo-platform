@@ -23,26 +23,15 @@ func (s item) Less(than btree.Item) bool {
 
 type sortedIndex[T d] struct {
 	sync.RWMutex
-	idx   *btree.BTree
-	cache Cache[T]
-	ids   []string
-	from  []string
-	to    *string
+	sorted Sorted
+	cache  Cache[T]
+	from   []string
+	to     *string
 }
 
 // Intersect ...
 func (s *sortedIndex[T]) Intersect(in []string) (res []string) {
-	t := make(map[string]struct{}, len(in))
-	for _, v := range in {
-		t[v] = struct{}{}
-	}
-	res = make([]string, 0, len(in))
-	for _, d := range s.ids {
-		if _, ok := t[d]; ok {
-			res = append(res, d)
-		}
-	}
-	return
+	return s.sorted.Intersect(in)
 }
 
 // Add ...
@@ -53,15 +42,7 @@ func (s *sortedIndex[T]) Add(ctx context.Context, it T) {
 	if s.to != nil {
 		to = getStringFieldValueByName(it, *s.to)
 	}
-	f := item{
-		id:   to,
-		text: getStringFieldValuesByName(it, s.from),
-	}
-	if s.idx.Get(f) != nil {
-		return
-	}
-	s.idx.ReplaceOrInsert(f)
-	s.fill()
+	s.sorted.Add(ctx, to, getStringFieldValuesByName(it, s.from))
 }
 
 // Update ...
@@ -73,16 +54,7 @@ func (s *sortedIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upda
 		if s.to != nil {
 			to = getStringFieldValueByName(it, *s.to)
 		}
-		from := getStringFieldValuesByName(it, s.from)
-		f := item{}
-		f.id = to
-		if from != "" {
-			f.text = from
-			s.idx.Delete(f)
-		}
-		f.text = getStringFieldValuesByName(updatedFields, s.from)
-		s.idx.ReplaceOrInsert(f)
-		s.fill()
+		s.sorted.Update(ctx, to, getStringFieldValuesByName(it, s.from), getStringFieldValuesByName(updatedFields, s.from))
 	}
 }
 
@@ -95,65 +67,50 @@ func (s *sortedIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 		if s.to != nil {
 			to = getStringFieldValueByName(it, *s.to)
 		}
-		s.idx.Delete(item{
-			id:   to,
-			text: getStringFieldValuesByName(it, s.from),
-		})
-		s.fill()
+		s.sorted.Delete(ctx, to, getStringFieldValuesByName(it, s.from))
 	}
-}
-
-func (s *sortedIndex[T]) fill() {
-	ids := make([]string, s.idx.Len())
-	s.idx.Ascend(func(i btree.Item) bool {
-		switch a := i.(type) {
-		case item:
-			ids = append(ids, a.id)
-			return true
-		}
-		return false
-	})
-	s.ids = ids
 }
 
 // NewSortedIndex ...
 func NewSortedIndex[T d](
+	sorted Sorted,
 	cache Cache[T],
-	btreeDegree int,
-	ids []string,
 	from []string,
 	to *string,
 ) SortedIndex[T] {
 	return &sortedIndex[T]{
-		ids:   ids,
-		idx:   btree.New(btreeDegree),
-		cache: cache,
-		from:  from,
-		to:    to,
+		sorted: sorted,
+		cache:  cache,
+		from:   from,
+		to:     to,
 	}
 }
 
-type sorted[T d] struct {
+type Sorted interface {
+	Intersect(in []string) (res []string)
+	Add(ctx context.Context, id string, title string)
+	Update(ctx context.Context, id string, old string, title string)
+	Delete(ctx context.Context, id string, title string)
+}
+
+type sorted struct {
 	sync.RWMutex
 	idx *btree.BTree
 	ids []string
 }
 
-func NewSorted[T d](idx *btree.BTree, ids []string) *sorted[T] {
-	return &sorted[T]{
-		idx: idx,
+func NewSorted(degree int, ids []string) Sorted {
+	return &sorted{
+		idx: btree.New(degree),
 		ids: ids,
 	}
 }
 
-func BuildSorted[T d]() *sorted[T] {
-	return NewSorted[T](
-		btree.New(1000),
-		[]string{},
-	)
+func BuildSorted() Sorted {
+	return NewSorted(1000, []string{})
 }
 
-func (s *sorted[T]) Intersect(in []string) (res []string) {
+func (s *sorted) Intersect(in []string) (res []string) {
 	t := make(map[string]struct{}, len(in))
 	for _, v := range in {
 		t[v] = struct{}{}
@@ -167,7 +124,7 @@ func (s *sorted[T]) Intersect(in []string) (res []string) {
 	return
 }
 
-func (s *sorted[T]) Add(ctx context.Context, id string, title string) {
+func (s *sorted) Add(ctx context.Context, id string, title string) {
 	s.Lock()
 	f := item{
 		id:   id,
@@ -182,7 +139,7 @@ func (s *sorted[T]) Add(ctx context.Context, id string, title string) {
 }
 
 // Update ...
-func (s *sorted[T]) Update(ctx context.Context, id string, old string, title string) {
+func (s *sorted) Update(ctx context.Context, id string, old string, title string) {
 	s.Lock()
 	f := item{}
 	f.id = id
@@ -195,7 +152,7 @@ func (s *sorted[T]) Update(ctx context.Context, id string, old string, title str
 }
 
 // Delete ...
-func (s *sorted[T]) Delete(ctx context.Context, id string, title string) {
+func (s *sorted) Delete(ctx context.Context, id string, title string) {
 	s.Lock()
 	s.idx.Delete(item{
 		id:   id,
@@ -205,7 +162,7 @@ func (s *sorted[T]) Delete(ctx context.Context, id string, title string) {
 	s.fill()
 }
 
-func (s *sorted[T]) fill() {
+func (s *sorted) fill() {
 	ids := make([]string, s.idx.Len())
 	s.idx.Ascend(func(i btree.Item) bool {
 		switch a := i.(type) {

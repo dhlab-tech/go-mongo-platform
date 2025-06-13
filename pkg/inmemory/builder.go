@@ -120,7 +120,7 @@ func NewCacheWithEventListener[T d](
 				inverseUniqueIndexes[indexName] = NewInverseUniqIndex(map[string]string{}, c, _idx.from, to)
 				l.AddListener(inverseUniqueIndexes[indexName], true)
 			case SortdIndexType:
-				sortedIndexes[indexName] = NewSortedIndex(c, 1000, []string{}, _idx.from, to)
+				sortedIndexes[indexName] = NewSortedIndex(NewSorted(1000, []string{}), c, _idx.from, to)
 				l.AddListener(sortedIndexes[indexName], true)
 			case SuffixIndexType:
 				suffixIndexes[indexName] = NewSuffixIndex(c, 1000, _idx.from, to)
