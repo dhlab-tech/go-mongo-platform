@@ -66,6 +66,11 @@ func (v *D) IsDeleted() bool {
 	return v.Deleted != nil && *v.Deleted
 }
 
+func (v *D) SetDeleted(d bool) {
+	_d := d
+	v.Deleted = &_d
+}
+
 type V struct {
 	D
 	Name     *string                `bson:"name"`

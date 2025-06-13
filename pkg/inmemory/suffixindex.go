@@ -30,11 +30,18 @@ func (s *Suffix[T]) Rebuild(ctx context.Context) {
 	s.M.Start()
 	for _, id := range s.cache.All(ctx) {
 		if it, found := s.cache.Get(ctx, id); found {
+			from := updateStringFieldValuesByName(it, s.from)
+			if from == nil {
+				continue
+			}
 			to := it.ID()
 			if s.to != nil {
-				to = getStringFieldValueByName(it, *s.to)
+				_to := updateStringFieldValueByName(it, *s.to)
+				if _to != nil {
+					to = *_to
+				}
 			}
-			s.M.Rebuild(to, getStringFieldValuesByName(it, s.from))
+			s.M.Rebuild(to, *from)
 		}
 	}
 	s.M.Commit()
@@ -47,27 +54,38 @@ func (s *Suffix[T]) Search(ctx context.Context, text string) (items []string) {
 
 // Add ...
 func (s *Suffix[T]) Add(ctx context.Context, it T) {
-	to := it.ID()
-	if s.to != nil {
-		to = getStringFieldValueByName(it, *s.to)
-	}
-	s.M.Add(to, getStringFieldValuesByName(it, s.from))
-}
-
-// Update ...
-func (s *Suffix[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
-	var (
-		it T
-		ok bool
-	)
-	if it, ok = s.cache.Get(context.Background(), id.Hex()); !ok {
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
 		return
 	}
 	to := it.ID()
 	if s.to != nil {
-		to = getStringFieldValueByName(it, *s.to)
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
 	}
-	s.M.Update(to, getStringFieldValuesByName(it, s.from))
+	s.M.Add(to, *from)
+}
+
+// Update ...
+func (s *Suffix[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+	it, ok := s.cache.Get(context.Background(), id.Hex())
+	if !ok {
+		return
+	}
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
+		return
+	}
+	to := it.ID()
+	if s.to != nil {
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
+	}
+	s.M.Update(to, *from)
 }
 
 // Delete ...

@@ -25,6 +25,7 @@ type d interface {
 	any
 	ID() string
 	Version() *int64
+	SetDeleted(d bool)
 }
 
 type cache[T d] interface {

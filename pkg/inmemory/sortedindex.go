@@ -38,23 +38,41 @@ func (s *sortedIndex[T]) Intersect(in []string) (res []string) {
 func (s *sortedIndex[T]) Add(ctx context.Context, it T) {
 	s.Lock()
 	defer s.Unlock()
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
+		return
+	}
 	to := it.ID()
 	if s.to != nil {
-		to = getStringFieldValueByName(it, *s.to)
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
 	}
-	s.sorted.Add(ctx, to, getStringFieldValuesByName(it, s.from))
+	s.sorted.Add(ctx, to, *from)
 }
 
 // Update ...
 func (s *sortedIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
 	s.Lock()
 	defer s.Unlock()
+	updatedVal := updateStringFieldValuesByName(updatedFields, s.from)
+	if updatedVal == nil {
+		return
+	}
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
+		_from := updateStringFieldValuesByName(it, s.from)
+		if _from == nil {
+			return
+		}
 		to := it.ID()
 		if s.to != nil {
-			to = getStringFieldValueByName(it, *s.to)
+			_to := updateStringFieldValueByName(it, *s.to)
+			if _to != nil {
+				to = *_to
+			}
 		}
-		s.sorted.Update(ctx, to, getStringFieldValuesByName(it, s.from), getStringFieldValuesByName(updatedFields, s.from))
+		s.sorted.Update(ctx, to, *_from, *updatedVal)
 	}
 }
 
@@ -63,11 +81,18 @@ func (s *sortedIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {
+		_from := updateStringFieldValuesByName(it, s.from)
+		if _from == nil {
+			return
+		}
 		to := it.ID()
 		if s.to != nil {
-			to = getStringFieldValueByName(it, *s.to)
+			_to := updateStringFieldValueByName(it, *s.to)
+			if _to != nil {
+				to = *_to
+			}
 		}
-		s.sorted.Delete(ctx, to, getStringFieldValuesByName(it, s.from))
+		s.sorted.Delete(ctx, to, *_from)
 	}
 }
 

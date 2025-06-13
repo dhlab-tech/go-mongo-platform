@@ -42,6 +42,9 @@ func (v *V) Version() *int64 {
 	return v.Ver
 }
 
+func (v *V) SetDeleted(d bool) {
+}
+
 type S struct {
 	CS  C
 	CSS []C

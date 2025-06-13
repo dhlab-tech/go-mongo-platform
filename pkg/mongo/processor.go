@@ -34,6 +34,8 @@ func (p *Processor[T]) Create(ctx context.Context, ps T) (id string, err error) 
 		doc bson.D
 		_id primitive.ObjectID
 	)
+	// создаем все сущности по умолчанию не удаленными
+	ps.SetDeleted(false)
 	_, doc, err = p.PrepareCreate(ctx, ps)
 	if err != nil {
 		return

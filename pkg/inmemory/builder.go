@@ -20,6 +20,7 @@ type d interface {
 	any
 	ID() string
 	Version() *int64
+	SetDeleted(bool)
 }
 
 type EventListener[T d] interface {

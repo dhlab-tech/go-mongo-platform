@@ -39,29 +39,45 @@ func (s *inverseIndex[T]) Get(ctx context.Context, val string) (ids []string) {
 func (s *inverseIndex[T]) Add(ctx context.Context, it T) {
 	s.Lock()
 	defer s.Unlock()
-	from := getStringFieldValuesByName(it, s.from)
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
+		return
+	}
 	to := it.ID()
 	if s.to != nil {
-		to = getStringFieldValueByName(it, *s.to)
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
 	}
-	for _, d := range s.data[from] {
+	for _, d := range s.data[*from] {
 		if d == to {
 			return
 		}
 	}
-	s.data[from] = append(s.data[from], to)
+	s.data[*from] = append(s.data[*from], to)
 }
 
 // Update ...
 func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
 	s.Lock()
 	defer s.Unlock()
-	updatedVal := getStringFieldValuesByName(updatedFields, s.from)
+	updatedVal := updateStringFieldValuesByName(updatedFields, s.from)
+	if updatedVal == nil {
+		return
+	}
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
-		from := getStringFieldValuesByName(it, s.from)
+		_from := updateStringFieldValuesByName(it, s.from)
+		if _from == nil {
+			return
+		}
+		from := *_from
 		to := it.ID()
 		if s.to != nil {
-			to = getStringFieldValueByName(it, *s.to)
+			_to := updateStringFieldValueByName(it, *s.to)
+			if _to != nil {
+				to = *_to
+			}
 		}
 		for k, d := range s.data[from] {
 			if d == to {
@@ -69,7 +85,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 				break
 			}
 		}
-		s.data[updatedVal] = append(s.data[updatedVal], to)
+		s.data[*updatedVal] = append(s.data[*updatedVal], to)
 	}
 }
 
@@ -78,14 +94,20 @@ func (s *inverseIndex[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {
-		from := getStringFieldValuesByName(it, s.from)
+		from := updateStringFieldValuesByName(it, s.from)
+		if from == nil {
+			return
+		}
 		to := it.ID()
 		if s.to != nil {
-			to = getStringFieldValueByName(it, *s.to)
+			_to := updateStringFieldValueByName(it, *s.to)
+			if _to != nil {
+				to = *_to
+			}
 		}
-		for k, d := range s.data[from] {
+		for k, d := range s.data[*from] {
 			if d == to {
-				s.data[from] = append(s.data[from][:k], s.data[from][k+1:]...)
+				s.data[*from] = append(s.data[*from][:k], s.data[*from][k+1:]...)
 				return
 			}
 		}

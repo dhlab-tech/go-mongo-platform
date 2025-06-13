@@ -43,17 +43,18 @@ func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
+	fromVal := updateStringFieldValuesByName(it, s.from)
+	if fromVal == nil {
+		return
+	}
 	to := it.ID()
 	if s.to != nil {
-		toVal := getStringFieldValueByName(it, *s.to)
-		if toVal != "" {
-			to = toVal
+		toVal := updateStringFieldValueByName(it, *s.to)
+		if toVal != nil {
+			to = *toVal
 		}
 	}
-	fromVal := getStringFieldValuesByName(it, s.from)
-	if fromVal != "" {
-		s.data[fromVal] = to
-	}
+	s.data[*fromVal] = to
 	logger.Debug().
 		Any("from", s.from).
 		Any("fromVal", fromVal).
@@ -66,19 +67,25 @@ func (s *inverseUniqueIndex[T]) Update(ctx context.Context, id primitive.ObjectI
 	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
-	updatedVal := getStringFieldValuesByName(updatedFields, s.from)
-	if updatedVal == "" {
+	updatedVal := updateStringFieldValuesByName(updatedFields, s.from)
+	if updatedVal == nil {
 		return
 	}
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
+		fromVal := updateStringFieldValuesByName(it, s.from)
+		if fromVal == nil {
+			return
+		}
 		to := it.ID()
 		if s.to != nil {
-			to = getStringFieldValueByName(it, *s.to)
+			toVal := updateStringFieldValueByName(it, *s.to)
+			if toVal != nil {
+				to = *toVal
+			}
 		}
-		fromVal := getStringFieldValuesByName(it, s.from)
-		if !compareSlices([]rune(fromVal), []rune(updatedVal)) {
-			delete(s.data, fromVal)
-			s.data[updatedVal] = to
+		if !compareSlices([]rune(*fromVal), []rune(*updatedVal)) {
+			delete(s.data, *fromVal)
+			s.data[*updatedVal] = to
 		}
 		logger.Debug().
 			Any("from", s.from).
@@ -94,9 +101,9 @@ func (s *inverseUniqueIndex[T]) Delete(ctx context.Context, _id primitive.Object
 	s.Lock()
 	defer s.Unlock()
 	if it, f := s.cache.Get(ctx, _id.Hex()); f {
-		fromVal := getStringFieldValuesByName(it, s.from)
-		if fromVal != "" {
-			delete(s.data, fromVal)
+		fromVal := updateStringFieldValuesByName(it, s.from)
+		if fromVal != nil {
+			delete(s.data, *fromVal)
 		}
 		logger.Debug().
 			Any("from", s.from).
