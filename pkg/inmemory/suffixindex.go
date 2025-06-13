@@ -389,3 +389,13 @@ func NewSuffixIndex[T d](cache Cache[T], btreeDegree int, from []string, to *str
 		to,
 	)
 }
+
+func BuildM[T d](cache Cache[T]) M {
+	sorterIntersector := NewIntersect()
+	suffixPool := NewPool()
+	return NewM(
+		cache,
+		NewS(sorterIntersector, btree.New(1000), suffixPool),
+		NewS(sorterIntersector, btree.New(1000), suffixPool),
+	)
+}
