@@ -460,3 +460,34 @@ func TestProcessor_PrepareUpdate_Empty(t *testing.T) {
 	var empty bson.D
 	assert.Equal(t, empty, set)
 }
+
+func TestProcessor_PrepareUpdate_Slice(t *testing.T) {
+	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
+	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c.Add(context.Background(), &V{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		SS: []S{{Name: &name1}, {Name: &name2}},
+	})
+	p := mongo.NewProcessor[*V](c, nil, nil, nil)
+	pr, set, _, err := p.PrepareUpdate(context.Background(), &V{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		SS: []S{},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, &V{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		SS: []S{},
+	}, pr)
+	assert.Equal(t, bson.D{
+		bson.E{Key: "sslice1", Value: bson.A{}},
+	}, set)
+}

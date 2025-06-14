@@ -323,6 +323,7 @@ func (p *Processor[T]) prepareCreateForSlice(ctx context.Context, fieldValue ref
 }
 
 func (p *Processor[T]) setArray(ps reflect.Value) (prepared reflect.Value, doc bson.A, err error) {
+	doc = bson.A{}
 	prepared = reflect.New(ps.Type()).Elem()
 	for i := 0; i < ps.Len(); i++ {
 		prepared.Index(i).Set(ps.Index(i))
@@ -336,6 +337,7 @@ func (p *Processor[T]) setSlice(ctx context.Context, ps reflect.Value) (prepared
 		return ps, doc, nil
 	}
 	prepared = reflect.MakeSlice(ps.Type(), ps.Len(), ps.Cap())
+	doc = bson.A{}
 	for j := 0; j < ps.Len(); j++ {
 		_prepared, prDoc, err := p.prepareCreateForSlice(ctx, ps.Index(j))
 		if err != nil {
@@ -507,15 +509,34 @@ func (p *Processor[T]) PrepareUpdate(ctx context.Context, ps T) (prepared T, set
 		err = ErrNotFound
 		return
 	}
-	logger.Debug().Any("item from cache", prepared).Any("type", reflect.TypeOf(prepared).Name()).Msg("Processor:PrepareUpdate")
+	in := reflect.ValueOf(ps)
+	var _t reflect.Type
+	var _v interface{}
+	if in.Kind() == reflect.Ptr {
+		_v = in.Elem().Interface()
+		_t = reflect.TypeOf(in.Elem().Interface())
+	} else {
+		_v = in.Interface()
+		_t = reflect.TypeOf(in.Interface())
+	}
+	logger.Debug().
+		Any("item for update", _v).
+		Any("item from cache", prepared).
+		Any("type", _t.Name()).
+		Msg("Processor:PrepareUpdate")
 	pr, s, err := p.prepareUpdate(ctx, ps.ID(), reflect.ValueOf(ps), reflect.ValueOf(prepared))
 	if err != nil {
 		return
 	}
+	if in.Kind() == reflect.Ptr {
+		_v = pr.Elem().Interface()
+	} else {
+		_v = pr.Interface()
+	}
 	logger.Debug().
 		Str("_id", ps.ID()).
-		Any("item prepared for update", pr).
-		Any("type", reflect.TypeOf(prepared).Name()).
+		Any("item prepared for update", _v).
+		Any("type", _t.Name()).
 		Any("doc set", s).
 		Msg("Processor:PrepareUpdate")
 	return pr.Interface().(T), s, nil, nil
