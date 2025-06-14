@@ -102,6 +102,9 @@ func updateStringFieldValuesByName(in any, fields []string) *string {
 			res = append(res, *r)
 		}
 	}
+	if len(res) == 0 {
+		return nil
+	}
 	return ptr(strings.Join(res, ""))
 }
 
