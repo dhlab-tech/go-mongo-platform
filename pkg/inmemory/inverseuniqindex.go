@@ -43,7 +43,16 @@ func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Msg("InverseUniqIndex:Add:start")
 	fromVal := updateStringFieldValuesByName(it, s.from)
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Any("fromVal", fromVal).
+		Msg("InverseUniqIndex:Add:after parse from val")
 	if fromVal == nil {
 		return
 	}
@@ -56,6 +65,7 @@ func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	}
 	s.data[*fromVal] = to
 	logger.Debug().
+		Any("id", it.ID()).
 		Any("from", s.from).
 		Any("fromVal", fromVal).
 		Any("to", to).

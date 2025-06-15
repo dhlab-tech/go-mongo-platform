@@ -94,10 +94,35 @@ func NewCacheWithEventListener[T d](
 		l.AddListener(notify, false)
 	}
 	// init indexes
-	inverseIndexes := map[string]InverseIndex[T]{}
-	inverseUniqueIndexes := map[string]InverseUniqueIndex[T]{}
-	sortedIndexes := map[string]SortedIndex[T]{}
-	suffixIndexes := map[string]SuffixIndex[T]{}
+	inverseIndexes, inverseUniqueIndexes, sortedIndexes, suffixIndexes := buildIndexes(l, c)
+	awaitNotify := NewNotifier[T](
+		map[string]map[string]func(){},
+		map[string]map[string]func(){},
+		map[string]map[string]func(){},
+	)
+	l.AddListener(awaitNotify, false)
+	return &CacheWithEventListener[T]{
+		Cache:                c,
+		EventListener:        l,
+		Notify:               notify,
+		InverseIndexes:       inverseIndexes,
+		InverseUniqueIndexes: inverseUniqueIndexes,
+		SuffixIndexes:        suffixIndexes,
+		SortedIndexes:        sortedIndexes,
+		AwaitNotify:          awaitNotify,
+	}
+}
+
+func buildIndexes[T d](l *Listener[T], c Cache[T]) (
+	inverseIndexes map[string]InverseIndex[T],
+	inverseUniqueIndexes map[string]InverseUniqueIndex[T],
+	sortedIndexes map[string]SortedIndex[T],
+	suffixIndexes map[string]SuffixIndex[T],
+) {
+	inverseIndexes = map[string]InverseIndex[T]{}
+	inverseUniqueIndexes = map[string]InverseUniqueIndex[T]{}
+	sortedIndexes = map[string]SortedIndex[T]{}
+	suffixIndexes = map[string]SuffixIndex[T]{}
 	var instance T
 	t := reflect.TypeOf(instance)
 	var v reflect.Value
@@ -129,22 +154,7 @@ func NewCacheWithEventListener[T d](
 			}
 		}
 	}
-	awaitNotify := NewNotifier[T](
-		map[string]map[string]func(){},
-		map[string]map[string]func(){},
-		map[string]map[string]func(){},
-	)
-	l.AddListener(awaitNotify, false)
-	return &CacheWithEventListener[T]{
-		Cache:                c,
-		EventListener:        l,
-		Notify:               notify,
-		InverseIndexes:       inverseIndexes,
-		InverseUniqueIndexes: inverseUniqueIndexes,
-		SuffixIndexes:        suffixIndexes,
-		SortedIndexes:        sortedIndexes,
-		AwaitNotify:          awaitNotify,
-	}
+	return
 }
 
 type idx struct {
