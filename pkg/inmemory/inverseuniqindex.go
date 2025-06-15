@@ -45,6 +45,7 @@ func (s *inverseUniqueIndex[T]) Add(ctx context.Context, it T) {
 	defer s.Unlock()
 	logger.Debug().
 		Any("id", it.ID()).
+		Any("it", it).
 		Any("from", s.from).
 		Msg("InverseUniqIndex:Add:start")
 	fromVal := updateStringFieldValuesByName(it, s.from)
