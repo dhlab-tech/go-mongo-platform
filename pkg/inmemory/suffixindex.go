@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/google/btree"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -230,6 +231,7 @@ func (a *S) Put(in string, idx int) {
 	if len(i) < 3 {
 		return
 	}
+	i = a.toLowerRuneSlice(i)
 	if len(i) == 3 {
 		a.set(i, idx)
 		return
@@ -237,6 +239,13 @@ func (a *S) Put(in string, idx int) {
 	for k := 0; k < len(i)-3; k++ {
 		a.set(i[k:k+3], idx)
 	}
+}
+
+func (a *S) toLowerRuneSlice(input []rune) []rune {
+	for i, r := range input {
+		input[i] = unicode.ToLower(r)
+	}
+	return input
 }
 
 // Search ...
@@ -247,6 +256,7 @@ func (a *S) Search(in string) (out []int) {
 	if len(i) < 3 {
 		return
 	}
+	i = a.toLowerRuneSlice(i)
 	if len(i) == 3 {
 		p := a.pool.Acquire()
 		p.key[0] = i[0]

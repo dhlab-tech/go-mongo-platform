@@ -43,6 +43,8 @@ var (
 	id1        uint8   = 1
 	dec1, _            = decimal.NewFromString("100.15")
 	dec2, _            = decimal.NewFromString("123.45")
+	width1             = 100
+	height1            = 100
 )
 
 type D struct {
@@ -69,6 +71,27 @@ func (v *D) IsDeleted() bool {
 func (v *D) SetDeleted(d bool) {
 	_d := d
 	v.Deleted = &_d
+}
+
+type Config struct {
+	D
+	Schema   *string           `json:"schema" bson:"schema"`
+	Host     *string           `json:"host" bson:"host" indexes:"inverse_unique:host:from"`
+	Path     map[string]string `json:"path" bson:"path"`
+	HTMLRoot *string           `json:"htmlRoot" bson:"htmlRoot"`
+	CSSRoot  *string           `json:"cssRoot" bson:"cssRoot"`
+	SJSRoot  *string           `json:"sjsRoot" bson:"sjsRoot"`
+	JSRoot   *string           `json:"jsRoot" bson:"jsRoot"`
+	JSVars   map[string]string `json:"jsVars" bson:"jsVars"`
+	PageSize *int              `json:"pageSize" bson:"pageSize"`
+	Menu     map[string]string `json:"menu" bson:"menu"`
+	MSConfig *string           `json:"msConfig" bson:"msConfig"`
+	Fits     []Fit             `json:"fits" bson:"fits"`
+}
+
+type Fit struct {
+	Width  int `json:"width" bson:"width"`
+	Height int `json:"height" bson:"height"`
 }
 
 type V struct {
@@ -489,5 +512,130 @@ func TestProcessor_PrepareUpdate_Slice(t *testing.T) {
 	}, pr)
 	assert.Equal(t, bson.D{
 		bson.E{Key: "sslice1", Value: bson.A{}},
+	}, set)
+}
+
+func TestProcessor_PrepareUpdate_Config(t *testing.T) {
+	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
+	c := inmemory.NewCache[*Config](0, map[int]string{}, map[string]int{}, map[string]*Config{})
+	c.Add(context.Background(), &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+	})
+	p := mongo.NewProcessor[*Config](c, nil, nil, nil)
+	pr, set, _, err := p.PrepareUpdate(context.Background(), &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		Fits: []Fit{
+			{Width: 64, Height: 85},
+			{Width: 172, Height: 230},
+			{Width: 400, Height: 533},
+			{Width: 600, Height: 800},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		Fits: []Fit{
+			{Width: 64, Height: 85},
+			{Width: 172, Height: 230},
+			{Width: 400, Height: 533},
+			{Width: 600, Height: 800},
+		},
+	}, pr)
+	assert.Equal(t, bson.D{
+		bson.E{Key: "fits", Value: bson.A{
+			bson.D{
+				bson.E{Key: "width", Value: int64(64)},
+				bson.E{Key: "height", Value: int64(85)},
+			},
+			bson.D{
+				bson.E{Key: "width", Value: int64(172)},
+				bson.E{Key: "height", Value: int64(230)},
+			},
+			bson.D{
+				bson.E{Key: "width", Value: int64(400)},
+				bson.E{Key: "height", Value: int64(533)},
+			},
+			bson.D{
+				bson.E{Key: "width", Value: int64(600)},
+				bson.E{Key: "height", Value: int64(800)},
+			},
+		}},
+	}, set)
+}
+
+type Image struct {
+	D
+	P
+	R
+	Name   *string `json:"name" bson:"name" indexes:"sorted:title:from,suffix:title:from"`                   // название файла
+	Orig   *string `json:"orig" bson:"orig" indexes:"inverse_unique:origWidthHeight:from,inverse:orig:from"` // id оригинального изображения
+	Width  *int    `json:"width" bson:"width" indexes:"inverse_unique:origWidthHeight:from"`                 // ширина изображения
+	Height *int    `json:"height" bson:"height" indexes:"inverse_unique:origWidthHeight:from"`               // высота изображения
+	Mime   *string `json:"mime" bson:"mime"`
+	Ext    *string `json:"ext" bson:"ext"`
+}
+
+type P struct {
+	Properties []Property `json:"properties" bson:"properties"`
+}
+
+type Property struct {
+	Tags  string `json:"tags" bson:"tags"`
+	Value string `json:"value" bson:"value"`
+}
+
+type R struct {
+	Parent *string `json:"parent" bson:"parent" indexes:"inverse:parent_id:from"`
+}
+
+func TestProcessor_PrepareUpdate_Delete(t *testing.T) {
+	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
+	c := inmemory.NewCache[*Image](0, map[int]string{}, map[string]int{}, map[string]*Image{})
+	im := Image{
+		D: D{
+			Id:      id,
+			V:       &version1,
+			Deleted: &bool2,
+		},
+		Name:   &name1,
+		Orig:   &name2,
+		Width:  &width1,
+		Height: &height1,
+		Mime:   &name1,
+		Ext:    &name1,
+	}
+	im.Properties = []Property{}
+	c.Add(context.Background(), &im)
+	p := mongo.NewProcessor[*Image](c, nil, nil, nil)
+	nim := Image{
+		D: D{
+			Id:      id,
+			V:       &version1,
+			Deleted: &bool1,
+		},
+		Name:   &name1,
+		Orig:   &name2,
+		Width:  &width1,
+		Height: &height1,
+		Mime:   &name1,
+		Ext:    &name1,
+	}
+	nim.Properties = []Property{}
+	pr, set, _, err := p.PrepareUpdate(context.Background(), &nim)
+	assert.NoError(t, err)
+	assert.Equal(t, &nim, pr)
+	assert.Equal(t, bson.D{
+		bson.E{Key: "_id", Value: id},
+		bson.E{Key: "version", Value: version1},
+		bson.E{Key: "deleted", Value: true},
 	}, set)
 }
