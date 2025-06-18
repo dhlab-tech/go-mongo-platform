@@ -224,7 +224,7 @@ func (a *S) Put(in string, idx int) {
 		a.set(i, idx)
 		return
 	}
-	for k := 0; k < len(i)-3; k++ {
+	for k := 0; k <= len(i)-3; k++ {
 		a.set(i[k:k+3], idx)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"strings"
+	"sync/atomic"
 
 	"github.com/rs/zerolog"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -322,16 +323,13 @@ func (p *cache[T]) isJsonRawMessage(t reflect.Type) bool {
 
 // NewCache ...
 func NewCache[T d](
-	maxIdx int,
-	itemsByIndex map[int]string,
-	indexByID map[string]int,
 	data map[string]T,
 ) Cache[T] {
 	return &cache[T]{
 		Idx: Idx{
-			maxIdx:       maxIdx,
-			itemsByIndex: itemsByIndex,
-			indexByID:    indexByID,
+			maxIdx:       atomic.Int64{},
+			itemsByIndex: map[int64]string{},
+			indexByID:    map[string]int64{},
 		},
 		data: data,
 	}

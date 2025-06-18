@@ -82,7 +82,7 @@ func NewCacheWithEventListener[T d](
 	afterListeners []StreamEventListener[T],
 	notify Notify[T],
 ) *CacheWithEventListener[T] {
-	c := NewCache[T](0, map[int]string{}, map[string]int{}, map[string]T{})
+	c := NewCache[T](map[string]T{})
 	l := NewListener[T](c)
 	for _, s := range beforeListeners {
 		l.AddListener(s, true)

@@ -256,7 +256,7 @@ func TestProcessor_PrepareCreate(t *testing.T) {
 
 func TestProcessor_PrepareUpdate(t *testing.T) {
 	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
-	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c := inmemory.NewCache[*V](map[string]*V{})
 	c.Add(context.Background(), &V{
 		D: D{
 			Id: id,
@@ -408,7 +408,7 @@ func TestProcessor_PrepareUpdate(t *testing.T) {
 
 func TestProcessor_PrepareUpdate_Empty(t *testing.T) {
 	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
-	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c := inmemory.NewCache[*V](map[string]*V{})
 	c.Add(context.Background(), &V{
 		D: D{
 			Id: id,
@@ -486,7 +486,7 @@ func TestProcessor_PrepareUpdate_Empty(t *testing.T) {
 
 func TestProcessor_PrepareUpdate_Slice(t *testing.T) {
 	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
-	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c := inmemory.NewCache[*V](map[string]*V{})
 	c.Add(context.Background(), &V{
 		D: D{
 			Id: id,
@@ -517,7 +517,7 @@ func TestProcessor_PrepareUpdate_Slice(t *testing.T) {
 
 func TestProcessor_PrepareUpdate_Config(t *testing.T) {
 	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
-	c := inmemory.NewCache[*Config](0, map[int]string{}, map[string]int{}, map[string]*Config{})
+	c := inmemory.NewCache[*Config](map[string]*Config{})
 	c.Add(context.Background(), &Config{
 		D: D{
 			Id: id,
@@ -599,7 +599,7 @@ type R struct {
 
 func TestProcessor_PrepareUpdate_Delete(t *testing.T) {
 	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
-	c := inmemory.NewCache[*Image](0, map[int]string{}, map[string]int{}, map[string]*Image{})
+	c := inmemory.NewCache[*Image](map[string]*Image{})
 	im := Image{
 		D: D{
 			Id:      id,

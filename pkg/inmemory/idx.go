@@ -2,21 +2,22 @@ package inmemory
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 // Idx ...
 type Idx struct {
 	sync.RWMutex
-	maxIdx       int
-	itemsByIndex map[int]string
-	indexByID    map[string]int
+	maxIdx       atomic.Int64
+	itemsByIndex map[int64]string
+	indexByID    map[string]int64
 }
 
 // GetIDByIndex ...
 func (c *Idx) GetIDByIndex(idx int) (id string, found bool) {
 	c.RLock()
 	defer c.RUnlock()
-	id, found = c.itemsByIndex[idx]
+	id, found = c.itemsByIndex[int64(idx)]
 	return
 }
 
@@ -24,15 +25,17 @@ func (c *Idx) GetIDByIndex(idx int) (id string, found bool) {
 func (c *Idx) GetIndexByID(id string) (idx int, found bool) {
 	c.RLock()
 	defer c.RUnlock()
-	idx, found = c.indexByID[id]
+	var _idx int64
+	_idx, found = c.indexByID[id]
+	idx = int(_idx)
 	return
 }
 
 // Add ...
 func (c *Idx) add(id string) {
-	c.maxIdx++
-	c.itemsByIndex[c.maxIdx] = id
-	c.indexByID[id] = c.maxIdx
+	max := c.maxIdx.Add(1)
+	c.itemsByIndex[max] = id
+	c.indexByID[id] = max
 }
 
 // Delete ...
@@ -44,17 +47,17 @@ func (c *Idx) deleteByID(id string) {
 }
 
 func (c *Idx) deleteByIdx(idx int) {
-	if id, f := c.itemsByIndex[idx]; f {
+	if id, f := c.itemsByIndex[int64(idx)]; f {
 		delete(c.indexByID, id)
 	}
-	delete(c.itemsByIndex, idx)
+	delete(c.itemsByIndex, int64(idx))
 }
 
 // NewIdx ...
 func NewIdx(
-	maxIdx int,
-	itemsByIndex map[int]string,
-	indexByID map[string]int,
+	maxIdx atomic.Int64,
+	itemsByIndex map[int64]string,
+	indexByID map[string]int64,
 ) *Idx {
 	return &Idx{
 		maxIdx:       maxIdx,

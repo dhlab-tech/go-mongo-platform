@@ -55,7 +55,7 @@ type C struct {
 }
 
 func TestCache_Update(t *testing.T) {
-	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c := inmemory.NewCache[*V](map[string]*V{})
 	id := primitive.NewObjectIDFromTimestamp(time.Now())
 	c.Add(context.Background(), &V{Id: id})
 	c.Update(context.Background(), id, &V{
@@ -117,7 +117,7 @@ func TestCache_Update(t *testing.T) {
 // TestCache_Get проверяем кейсы:
 // 1) то что метод возвращает копию хранимых данных
 func TestCache_Get(t *testing.T) {
-	c := inmemory.NewCache[*V](0, map[int]string{}, map[string]int{}, map[string]*V{})
+	c := inmemory.NewCache[*V](map[string]*V{})
 	id := primitive.NewObjectIDFromTimestamp(time.Now())
 	c.Add(context.Background(), &V{
 		Id:     id,

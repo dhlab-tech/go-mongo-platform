@@ -141,7 +141,7 @@ func TestBuilder_prepareIdxs_for_Image(t *testing.T) {
 }
 
 func TestInverseUniqueIndex(t *testing.T) {
-	c := NewCache[*DocSetTitle](0, map[int]string{}, map[string]int{}, map[string]*DocSetTitle{})
+	c := NewCache[*DocSetTitle](map[string]*DocSetTitle{})
 	var to *string
 	if expectedIdxsForDocSetTitle["inverse_unique"]["catalogItem"].to != "" {
 		_to := expectedIdxsForDocSetTitle["inverse_unique"]["catalogItem"].to
