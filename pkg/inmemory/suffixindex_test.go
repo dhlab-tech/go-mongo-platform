@@ -47,4 +47,6 @@ func TestS_Put_3(t *testing.T) {
 	a.Put("Булочка с корицей", 3)
 	res := a.Search("фас")
 	assert.Equal(t, []int{2}, res)
+	res = a.Search("кор")
+	assert.Equal(t, []int{3}, res)
 }

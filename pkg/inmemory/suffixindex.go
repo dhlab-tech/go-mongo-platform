@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"unicode"
 
@@ -122,13 +121,11 @@ func (s *m[T]) Start() {
 }
 
 func (s *m[T]) Rebuild(id string, text string) {
-	if text != "" {
-		idx, found := s.cache.GetIndexByID(id)
-		if !found {
-			return
-		}
-		s.old.Put(strings.ToLower(text), idx)
+	idx, found := s.cache.GetIndexByID(id)
+	if !found {
+		return
 	}
+	s.old.Put(text, idx)
 }
 
 func (s *m[T]) Commit() {
@@ -140,26 +137,21 @@ func (s *m[T]) Commit() {
 func (s *m[T]) Add(id string, text string) {
 	s.Lock()
 	defer s.Unlock()
-	if text != "" {
-		idx, found := s.cache.GetIndexByID(id)
-		if !found {
-			return
-		}
-		s.tree.Put(strings.ToLower(text), idx)
+	idx, found := s.cache.GetIndexByID(id)
+	if !found {
+		return
 	}
+	s.tree.Put(text, idx)
 }
 
 func (s *m[T]) Update(id string, text string) {
 	s.Lock()
 	defer s.Unlock()
-	if text != "" {
-		idx, found := s.cache.GetIndexByID(id)
-		if !found {
-			return
-		}
-		s.tree.Put(strings.ToLower(text), idx)
+	idx, found := s.cache.GetIndexByID(id)
+	if !found {
 		return
 	}
+	s.tree.Put(text, idx)
 }
 
 func (s *m[T]) S(ctx context.Context, text string) (items []string) {
@@ -169,11 +161,7 @@ func (s *m[T]) S(ctx context.Context, text string) (items []string) {
 		id    string
 		found bool
 	)
-	if len(text) < 3 {
-		items = s.cache.All(ctx)
-		return
-	}
-	idxs := s.tree.Search(strings.ToLower(text))
+	idxs := s.tree.Search(text)
 	items = make([]string, len(idxs))
 	for k, idx := range idxs {
 		if id, found = s.cache.GetIDByIndex(idx); found {
