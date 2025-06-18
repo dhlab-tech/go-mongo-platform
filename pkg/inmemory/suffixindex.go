@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/google/btree"
+	"github.com/rs/zerolog"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -54,8 +55,19 @@ func (s *Suffix[T]) Search(ctx context.Context, text string) (items []string) {
 
 // Add ...
 func (s *Suffix[T]) Add(ctx context.Context, it T) {
-	from := updateStringFieldValuesByName(it, s.from)
-	if from == nil {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("it", it).
+		Any("from", s.from).
+		Msg("Suffix:Add:start")
+	fromVal := updateStringFieldValuesByName(it, s.from)
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Any("fromVal", fromVal).
+		Msg("Suffix:Add:after parse from val")
+	if fromVal == nil {
 		return
 	}
 	to := it.ID()
@@ -65,7 +77,13 @@ func (s *Suffix[T]) Add(ctx context.Context, it T) {
 			to = *_to
 		}
 	}
-	s.M.Add(to, *from)
+	s.M.Add(to, *fromVal)
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Any("fromVal", fromVal).
+		Any("to", to).
+		Msg("Suffix:Add")
 }
 
 // Update ...
