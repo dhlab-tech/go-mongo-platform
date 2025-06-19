@@ -46,7 +46,6 @@ type SortedIndex[T d] interface {
 type SuffixIndex[T d] interface {
 	StreamEventListener[T]
 	Search(ctx context.Context, text string) (items []string)
-	Rebuild(ctx context.Context)
 }
 
 type MongoDeps struct {
@@ -149,8 +148,13 @@ func buildIndexes[T d](l *Listener[T], c Cache[T]) (
 				sortedIndexes[indexName] = NewSortedIndex(NewSorted(1000, []string{}), c, _idx.from, to)
 				l.AddListener(sortedIndexes[indexName], true)
 			case SuffixIndexType:
-				suffixIndexes[indexName] = NewSuffixIndex(c, 1000, _idx.from, to)
+				// сделано так, потому что основной суффиксный индекс включается в цепочку после обновления кеша
+				// а удалить данные мы можем только до обновления кеша, чтобы иметь в кеше старые данные
+				// с помощью такого решения мы ухоидим от необходимости ребилда кеша, он у нас актуальный всегда
+				var si SuffixIndex[T]
+				suffixIndexes[indexName], si = NewSuffixIndex(c, 1000, _idx.from, to)
 				l.AddListener(suffixIndexes[indexName], false)
+				l.AddListener(si, true)
 			}
 		}
 	}

@@ -10,6 +10,55 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type UpdateSuffix[T d] struct {
+	M
+	cache Cache[T]
+	from  []string
+	to    *string
+}
+
+func NewUpdateSuffix[T d](index M, cache Cache[T], from []string, to *string) SuffixIndex[T] {
+	return &Suffix[T]{
+		M:     index,
+		cache: cache,
+		from:  from,
+		to:    to,
+	}
+}
+
+func (s *UpdateSuffix[T]) Search(ctx context.Context, text string) (items []string) {
+	return
+}
+
+func (s *UpdateSuffix[T]) Add(ctx context.Context, it T) {
+}
+
+// Update удаляет старое значение из индекса
+// сделано так, потому что основной суффиксный индекс включается в цепочку после обновления кеша
+// а удалить данные мы можем только до обновления кеша, чтобы иметь в кеше старые данные
+// с помощью такого решения мы ухоидим от необходимости ребилда кеша, он у нас актуальный всегда
+func (s *UpdateSuffix[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+	it, ok := s.cache.Get(context.Background(), id.Hex())
+	if !ok {
+		return
+	}
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
+		return
+	}
+	to := it.ID()
+	if s.to != nil {
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
+	}
+	s.M.Delete(to, *from)
+}
+
+func (s *UpdateSuffix[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+}
+
 type Suffix[T d] struct {
 	M
 	cache Cache[T]
@@ -24,28 +73,6 @@ func NewSuffix[T d](index M, cache Cache[T], from []string, to *string) SuffixIn
 		from:  from,
 		to:    to,
 	}
-}
-
-// Rebuild ...
-func (s *Suffix[T]) Rebuild(ctx context.Context) {
-	s.M.Start()
-	for _, id := range s.cache.All(ctx) {
-		if it, found := s.cache.Get(ctx, id); found {
-			fromVal := updateStringFieldValuesByName(it, s.from)
-			if fromVal == nil {
-				continue
-			}
-			to := it.ID()
-			if s.to != nil {
-				_to := updateStringFieldValueByName(it, *s.to)
-				if _to != nil {
-					to = *_to
-				}
-			}
-			s.M.Rebuild(to, *fromVal)
-		}
-	}
-	s.M.Commit()
 }
 
 // Search ...
@@ -108,20 +135,35 @@ func (s *Suffix[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFi
 
 // Delete ...
 func (s *Suffix[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+	it, ok := s.cache.Get(context.Background(), _id.Hex())
+	if !ok {
+		return
+	}
+	from := updateStringFieldValuesByName(it, s.from)
+	if from == nil {
+		return
+	}
+	to := it.ID()
+	if s.to != nil {
+		_to := updateStringFieldValueByName(it, *s.to)
+		if _to != nil {
+			to = *_to
+		}
+	}
+	s.M.Delete(to, *from)
 }
 
 type M interface {
-	Start()
-	Rebuild(id string, title string)
-	Commit()
 	Add(id string, title string)
 	Update(id string, title string)
+	Delete(id string, text string)
 	S(ctx context.Context, text string) (items []string)
 }
 
 type suffixTree interface {
 	Reset()
 	Put(in string, idx int)
+	Delete(in string, idx int)
 	Search(in string) (out []int)
 }
 
@@ -129,27 +171,6 @@ type m[T d] struct {
 	sync.RWMutex
 	cache Cache[T]
 	tree  suffixTree
-	old   suffixTree
-}
-
-func (s *m[T]) Start() {
-	s.Lock()
-	s.old.Reset()
-	s.Unlock()
-}
-
-func (s *m[T]) Rebuild(id string, text string) {
-	idx, found := s.cache.GetIndexByID(id)
-	if !found {
-		return
-	}
-	s.old.Put(text, idx)
-}
-
-func (s *m[T]) Commit() {
-	s.Lock()
-	s.tree, s.old = s.old, s.tree
-	s.Unlock()
 }
 
 func (s *m[T]) Add(id string, text string) {
@@ -172,6 +193,16 @@ func (s *m[T]) Update(id string, text string) {
 	s.tree.Put(text, idx)
 }
 
+func (s *m[T]) Delete(id string, text string) {
+	s.Lock()
+	defer s.Unlock()
+	idx, found := s.cache.GetIndexByID(id)
+	if !found {
+		return
+	}
+	s.tree.Delete(text, idx)
+}
+
 func (s *m[T]) S(ctx context.Context, text string) (items []string) {
 	s.RLock()
 	defer s.RUnlock()
@@ -192,12 +223,10 @@ func (s *m[T]) S(ctx context.Context, text string) (items []string) {
 func NewM[T d](
 	cache Cache[T],
 	tree suffixTree,
-	old suffixTree,
 ) M {
 	return &m[T]{
 		cache: cache,
 		tree:  tree,
-		old:   old,
 	}
 }
 
@@ -244,6 +273,23 @@ func (a *S) Put(in string, idx int) {
 	}
 	for k := 0; k <= len(i)-3; k++ {
 		a.set(i[k:k+3], idx)
+	}
+}
+
+func (a *S) Delete(in string, idx int) {
+	a.Lock()
+	defer a.Unlock()
+	i := []rune(in)
+	if len(i) < 3 {
+		return
+	}
+	i = a.toLowerRuneSlice(i)
+	if len(i) == 3 {
+		a.delete(i, idx)
+		return
+	}
+	for k := 0; k <= len(i)-3; k++ {
+		a.delete(i[k:k+3], idx)
 	}
 }
 
@@ -317,6 +363,28 @@ func (a *S) set(i []rune, idx int) {
 	}
 	p.data = append(p.data, idx)
 	a.data.ReplaceOrInsert(p)
+}
+
+func (a *S) delete(i []rune, idx int) {
+	var g btree.Item
+	p := a.pool.Acquire()
+	p.key[0] = i[0]
+	p.key[1] = i[1]
+	p.key[2] = i[2]
+	g = a.data.Get(p)
+	if g != nil {
+		a.pool.Release(p)
+		switch b := g.(type) {
+		case *F:
+			for k := 0; k < len(b.data); k++ {
+				if b.data[k] == idx {
+					b.data = append(b.data[:k], b.data[k+1:]...)
+					a.data.ReplaceOrInsert(b)
+					return
+				}
+			}
+		}
+	}
 }
 
 func (a *S) get(p *F) []int {
@@ -409,19 +477,14 @@ func NewPool() *Pool {
 	}
 }
 
-func NewSuffixIndex[T d](cache Cache[T], btreeDegree int, from []string, to *string) SuffixIndex[T] {
+func NewSuffixIndex[T d](cache Cache[T], btreeDegree int, from []string, to *string) (SuffixIndex[T], SuffixIndex[T]) {
 	sorterIntersector := NewIntersect()
 	suffixPool := NewPool()
-	return NewSuffix(
-		NewM(
-			cache,
-			NewS(sorterIntersector, btree.New(btreeDegree), suffixPool),
-			NewS(sorterIntersector, btree.New(btreeDegree), suffixPool),
-		),
+	m := NewM(
 		cache,
-		from,
-		to,
+		NewS(sorterIntersector, btree.New(btreeDegree), suffixPool),
 	)
+	return NewSuffix(m, cache, from, to), NewUpdateSuffix(m, cache, from, to)
 }
 
 func BuildM[T d](cache Cache[T]) M {
@@ -429,7 +492,6 @@ func BuildM[T d](cache Cache[T]) M {
 	suffixPool := NewPool()
 	return NewM(
 		cache,
-		NewS(sorterIntersector, btree.New(1000), suffixPool),
 		NewS(sorterIntersector, btree.New(1000), suffixPool),
 	)
 }

@@ -43,7 +43,6 @@ func TestM_S(t *testing.T) {
 	m := inmemory.NewM(
 		c,
 		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
-		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
 	)
 	expected := []string{}
 	for _, v := range []string{"Выпечка", "Выпечка сладкая", "Выпечка сытная"} {
@@ -63,38 +62,10 @@ func TestM_S(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
-func TestM_Rebuild(t *testing.T) {
+func TestSuffix(t *testing.T) {
 	c := inmemory.NewCache[*inmemory.Image](make(map[string]*inmemory.Image))
 	m := inmemory.NewM(
 		c,
-		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
-		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
-	)
-	m.Start()
-	expected := []string{}
-	for _, v := range []string{"Выпечка", "Выпечка сладкая", "Выпечка сытная"} {
-		v := v
-		im := inmemory.Image{Name: &v}
-		c.Add(context.Background(), &im)
-		m.Rebuild(im.ID(), v)
-		expected = append(expected, im.ID())
-	}
-	m.Commit()
-	res := m.S(context.Background(), "выпе")
-	assert.Equal(t, expected, res)
-	res = m.S(context.Background(), "дкая")
-	assert.Equal(t, []string{expected[1]}, res)
-	res = m.S(context.Background(), "сладкая")
-	assert.Equal(t, []string{expected[1]}, res)
-	res = m.S(context.Background(), "ечка")
-	assert.Equal(t, expected, res)
-}
-
-func TestSuffix_Rebuild(t *testing.T) {
-	c := inmemory.NewCache[*inmemory.Image](make(map[string]*inmemory.Image))
-	m := inmemory.NewM(
-		c,
-		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
 		inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool()),
 	)
 	s := inmemory.NewSuffix(m, c, []string{"Name"}, nil)
@@ -107,15 +78,6 @@ func TestSuffix_Rebuild(t *testing.T) {
 		expected = append(expected, im.ID())
 	}
 	res := s.Search(context.Background(), "выпе")
-	assert.Equal(t, expected, res)
-	res = s.Search(context.Background(), "дкая")
-	assert.Equal(t, []string{expected[1]}, res)
-	res = s.Search(context.Background(), "сладкая")
-	assert.Equal(t, []string{expected[1]}, res)
-	res = s.Search(context.Background(), "ечка")
-	assert.Equal(t, expected, res)
-	s.Rebuild(context.Background())
-	res = s.Search(context.Background(), "выпе")
 	assert.Equal(t, expected, res)
 	res = s.Search(context.Background(), "дкая")
 	assert.Equal(t, []string{expected[1]}, res)
