@@ -18,7 +18,7 @@ type DocSetTitle struct {
 
 type Image struct {
 	D
-	Name   *string `json:"name" bson:"name"`                                                                 // название файла
+	Name   *string `json:"name" bson:"name" indexes:"sorted:title:from,suffix:title:from"`                   // название файла
 	Orig   *string `json:"orig" bson:"orig" indexes:"inverse_unique:origWidthHeight:from,inverse:orig:from"` // id оригинального изображения
 	Width  *int    `json:"width" bson:"width" indexes:"inverse_unique:origWidthHeight:from"`                 // ширина изображения
 	Height *int    `json:"height" bson:"height" indexes:"inverse_unique:origWidthHeight:from"`               // высота изображения
@@ -118,6 +118,18 @@ var expectedIdxsForImage = map[string]map[string]FT{
 			to:   emptyTo,
 		},
 	},
+	"suffix": {
+		"title": {
+			from: []string{"Name"},
+			to:   emptyTo,
+		},
+	},
+	"sorted": {
+		"title": {
+			from: []string{"Name"},
+			to:   emptyTo,
+		},
+	},
 }
 
 func TestBuilder_prepareIdxs_for_DocSetTitle(t *testing.T) {
@@ -163,4 +175,17 @@ func TestInverseUniqueIndex(t *testing.T) {
 	id, found := iui.Get(context.Background(), catalogID, itemID)
 	assert.Equal(t, true, found)
 	assert.Equal(t, _id.Hex(), id)
+}
+
+func TestNewCacheWithEventListener(t *testing.T) {
+	c := NewCacheWithEventListener[*Image]([]StreamEventListener[*Image]{}, []StreamEventListener[*Image]{}, nil)
+	expected := []string{}
+	for _, v := range []string{"Выпечка", "Выпечка сладкая", "Выпечка сытная"} {
+		v := v
+		im := Image{Name: &v}
+		c.EventListener.Add(context.Background(), &im)
+		expected = append(expected, im.ID())
+	}
+	items := c.SuffixIndexes["title"].Search(context.Background(), "выпе")
+	assert.Equal(t, expected, items)
 }

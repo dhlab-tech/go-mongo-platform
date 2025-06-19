@@ -8,7 +8,7 @@ import (
 // Idx ...
 type Idx struct {
 	sync.RWMutex
-	maxIdx       atomic.Int64
+	maxIdx       *atomic.Int64
 	itemsByIndex map[int64]string
 	indexByID    map[string]int64
 }
@@ -55,7 +55,7 @@ func (c *Idx) deleteByIdx(idx int) {
 
 // NewIdx ...
 func NewIdx(
-	maxIdx atomic.Int64,
+	maxIdx *atomic.Int64,
 	itemsByIndex map[int64]string,
 	indexByID map[string]int64,
 ) *Idx {

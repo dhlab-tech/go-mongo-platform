@@ -327,7 +327,7 @@ func NewCache[T d](
 ) Cache[T] {
 	return &cache[T]{
 		Idx: Idx{
-			maxIdx:       atomic.Int64{},
+			maxIdx:       &atomic.Int64{},
 			itemsByIndex: map[int64]string{},
 			indexByID:    map[string]int64{},
 		},
