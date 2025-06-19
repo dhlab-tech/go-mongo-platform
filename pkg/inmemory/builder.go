@@ -30,7 +30,7 @@ type EventListener[T d] interface {
 
 type InverseIndex[T d] interface {
 	StreamEventListener[T]
-	Get(ctx context.Context, val string) (ids []string)
+	Get(ctx context.Context, val *string) (ids []string)
 }
 
 type InverseUniqueIndex[T d] interface {
@@ -139,7 +139,7 @@ func buildIndexes[T d](l *Listener[T], c Cache[T]) (
 			}
 			switch indexType {
 			case InverseIndexType:
-				inverseIndexes[indexName] = NewInverseIndex(map[string][]string{}, c, _idx.from, to)
+				inverseIndexes[indexName] = NewInverseIndex(map[string][]string{}, make([]string, 0), c, _idx.from, to)
 				l.AddListener(inverseIndexes[indexName], true)
 			case InverseUniqueIndexType:
 				inverseUniqueIndexes[indexName] = NewInverseUniqIndex(map[string]string{}, c, _idx.from, to)
