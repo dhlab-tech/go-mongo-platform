@@ -150,7 +150,7 @@ func buildIndexes[T d](l *Listener[T], c Cache[T]) (
 				l.AddListener(sortedIndexes[indexName], true)
 			case SuffixIndexType:
 				suffixIndexes[indexName] = NewSuffixIndex(c, 1000, _idx.from, to)
-				l.AddListener(suffixIndexes[indexName], true)
+				l.AddListener(suffixIndexes[indexName], false)
 			}
 		}
 	}

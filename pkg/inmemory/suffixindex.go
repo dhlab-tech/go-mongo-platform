@@ -31,8 +31,8 @@ func (s *Suffix[T]) Rebuild(ctx context.Context) {
 	s.M.Start()
 	for _, id := range s.cache.All(ctx) {
 		if it, found := s.cache.Get(ctx, id); found {
-			from := updateStringFieldValuesByName(it, s.from)
-			if from == nil {
+			fromVal := updateStringFieldValuesByName(it, s.from)
+			if fromVal == nil {
 				continue
 			}
 			to := it.ID()
@@ -42,7 +42,7 @@ func (s *Suffix[T]) Rebuild(ctx context.Context) {
 					to = *_to
 				}
 			}
-			s.M.Rebuild(to, *from)
+			s.M.Rebuild(to, *fromVal)
 		}
 	}
 	s.M.Commit()
