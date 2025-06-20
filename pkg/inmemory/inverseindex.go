@@ -146,6 +146,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			Any("from", s.from).
 			Any("fromVal", fromVal).
 			Any("updatedVal", updatedVal).
+			Any("data", s.data).
 			Any("to", to).
 			Msg("InverseUniqIndex:Update")
 	}
