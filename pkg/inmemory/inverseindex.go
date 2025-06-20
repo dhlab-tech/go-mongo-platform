@@ -36,9 +36,24 @@ func NewInverseIndex[T d](
 func (s *inverseIndex[T]) Get(ctx context.Context, val *string) (ids []string) {
 	s.RLock()
 	defer s.RUnlock()
+	zerolog.Ctx(ctx).Debug().
+		Any("from", s.from).
+		Any("val", val).
+		Any("data", s.data).
+		Msg("InverseUniqIndex:Get")
 	if val != nil {
+		zerolog.Ctx(ctx).Debug().
+			Any("from", s.from).
+			Any("val", val).
+			Any("data", s.data).
+			Msg("InverseUniqIndex:Get:val not nil")
 		return s.data[*val]
 	}
+	zerolog.Ctx(ctx).Debug().
+		Any("from", s.from).
+		Any("val", val).
+		Any("data", s.data).
+		Msg("InverseUniqIndex:Get:nil val")
 	return s.nilData
 }
 
