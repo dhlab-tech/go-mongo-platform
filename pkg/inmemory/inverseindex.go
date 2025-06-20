@@ -108,7 +108,13 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 		Any("updatedFields", updatedFields).
 		Any("from", s.from).
 		Msg("InverseIndex:Update:start")
+	// todo Поле может стать nil
+	// for _, _ = range removedFields {
+	// }
 	updatedVal := updateStringFieldValuesByName(updatedFields, s.from)
+	if updatedVal == nil {
+		return
+	}
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
 		fromVal := updateStringFieldValuesByName(it, s.from)
 		to := it.ID()
@@ -125,9 +131,6 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			Any("updatedFields", updatedFields).
 			Any("from", s.from).
 			Msg("InverseIndex:Update:after parse from val")
-		if updatedVal == nil && fromVal == nil {
-			return
-		}
 		if fromVal == nil {
 			for k, v := range s.nilData {
 				if v == to {
@@ -136,17 +139,6 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 				}
 			}
 			s.data[*updatedVal] = append(s.data[*updatedVal], to)
-			return
-		}
-		if updatedVal == nil {
-			from := *fromVal
-			for k, d := range s.data[from] {
-				if d == to {
-					s.data[from] = append(s.data[from][:k], s.data[from][k+1:]...)
-					break
-				}
-			}
-			s.nilData = append(s.nilData, to)
 			return
 		}
 		from := *fromVal
