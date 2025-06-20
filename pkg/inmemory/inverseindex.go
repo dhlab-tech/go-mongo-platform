@@ -40,20 +40,20 @@ func (s *inverseIndex[T]) Get(ctx context.Context, val *string) (ids []string) {
 		Any("from", s.from).
 		Any("val", val).
 		Any("data", s.data).
-		Msg("InverseUniqIndex:Get")
+		Msg("InverseIndex:Get")
 	if val != nil {
 		zerolog.Ctx(ctx).Debug().
 			Any("from", s.from).
 			Any("val", val).
 			Any("data", s.data).
-			Msg("InverseUniqIndex:Get:val not nil")
+			Msg("InverseIndex:Get:val not nil")
 		return s.data[*val]
 	}
 	zerolog.Ctx(ctx).Debug().
 		Any("from", s.from).
 		Any("val", val).
 		Any("data", s.data).
-		Msg("InverseUniqIndex:Get:nil val")
+		Msg("InverseIndex:Get:nil val")
 	return s.nilData
 }
 
@@ -163,7 +163,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			Any("updatedVal", updatedVal).
 			Any("data", s.data).
 			Any("to", to).
-			Msg("InverseUniqIndex:Update")
+			Msg("InverseIndex:Update")
 	}
 }
 
