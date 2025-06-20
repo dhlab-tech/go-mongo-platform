@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/rs/zerolog"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -43,8 +44,14 @@ func (s *inverseIndex[T]) Get(ctx context.Context, val *string) (ids []string) {
 
 // Add ...
 func (s *inverseIndex[T]) Add(ctx context.Context, it T) {
+	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("it", it).
+		Any("from", s.from).
+		Msg("InverseIndex:Add:start")
 	fromVal := updateStringFieldValuesByName(it, s.from)
 	to := it.ID()
 	if s.to != nil {
@@ -53,6 +60,11 @@ func (s *inverseIndex[T]) Add(ctx context.Context, it T) {
 			to = *_to
 		}
 	}
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Any("fromVal", fromVal).
+		Msg("InverseIndex:Add:after parse from val")
 	if fromVal == nil {
 		s.nilData = append(s.nilData, to)
 		return
@@ -63,15 +75,27 @@ func (s *inverseIndex[T]) Add(ctx context.Context, it T) {
 		}
 	}
 	s.data[*fromVal] = append(s.data[*fromVal], to)
+	logger.Debug().
+		Any("id", it.ID()).
+		Any("from", s.from).
+		Any("fromVal", fromVal).
+		Any("to", to).
+		Msg("InverseIndex:Add")
 }
 
 // Update ...
 func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, updatedFields T, removedFields []string) {
+	logger := zerolog.Ctx(ctx)
 	s.Lock()
 	defer s.Unlock()
+	logger.Debug().
+		Any("id", id.Hex()).
+		Any("updatedFields", updatedFields).
+		Any("from", s.from).
+		Msg("InverseIndex:Update:start")
 	updatedVal := updateStringFieldValuesByName(updatedFields, s.from)
 	if it, found := s.cache.Get(ctx, id.Hex()); found {
-		_from := updateStringFieldValuesByName(it, s.from)
+		fromVal := updateStringFieldValuesByName(it, s.from)
 		to := it.ID()
 		if s.to != nil {
 			_to := updateStringFieldValueByName(it, *s.to)
@@ -79,10 +103,16 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 				to = *_to
 			}
 		}
-		if updatedVal == nil && _from == nil {
+		logger.Debug().
+			Any("id", id.Hex()).
+			Any("fromVal", fromVal).
+			Any("updatedFields", updatedFields).
+			Any("from", s.from).
+			Msg("InverseIndex:Update:after parse from val")
+		if updatedVal == nil && fromVal == nil {
 			return
 		}
-		if _from == nil {
+		if fromVal == nil {
 			for k, v := range s.nilData {
 				if v == to {
 					s.nilData = append(s.nilData[:k], s.nilData[k+1:]...)
@@ -93,7 +123,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			return
 		}
 		if updatedVal == nil {
-			from := *_from
+			from := *fromVal
 			for k, d := range s.data[from] {
 				if d == to {
 					s.data[from] = append(s.data[from][:k], s.data[from][k+1:]...)
@@ -103,7 +133,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			s.nilData = append(s.nilData, to)
 			return
 		}
-		from := *_from
+		from := *fromVal
 		for k, d := range s.data[from] {
 			if d == to {
 				s.data[from] = append(s.data[from][:k], s.data[from][k+1:]...)
@@ -111,6 +141,11 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 			}
 		}
 		s.data[*updatedVal] = append(s.data[*updatedVal], to)
+		logger.Debug().
+			Any("from", s.from).
+			Any("fromVal", fromVal).
+			Any("to", to).
+			Msg("InverseUniqIndex:Update")
 	}
 }
 
