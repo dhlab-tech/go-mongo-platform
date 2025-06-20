@@ -106,6 +106,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 		logger.Debug().
 			Any("id", id.Hex()).
 			Any("fromVal", fromVal).
+			Any("updatedVal", updatedVal).
 			Any("updatedFields", updatedFields).
 			Any("from", s.from).
 			Msg("InverseIndex:Update:after parse from val")
@@ -144,6 +145,7 @@ func (s *inverseIndex[T]) Update(ctx context.Context, id primitive.ObjectID, upd
 		logger.Debug().
 			Any("from", s.from).
 			Any("fromVal", fromVal).
+			Any("updatedVal", updatedVal).
 			Any("to", to).
 			Msg("InverseUniqIndex:Update")
 	}
