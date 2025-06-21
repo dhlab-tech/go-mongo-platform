@@ -46,6 +46,7 @@ type SortedIndex[T d] interface {
 type SuffixIndex[T d] interface {
 	StreamEventListener[T]
 	Search(ctx context.Context, text string) (items []string)
+	Find(ctx context.Context, text string) (items []string)
 }
 
 type MongoDeps struct {

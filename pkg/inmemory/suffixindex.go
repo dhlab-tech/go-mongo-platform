@@ -78,7 +78,11 @@ func NewSuffix[T d](index M, cache Cache[T], from []string, to *string) SuffixIn
 
 // Search ...
 func (s *Suffix[T]) Search(ctx context.Context, text string) (items []string) {
-	return s.M.S(ctx, text)
+	return s.M.Search(ctx, text)
+}
+
+func (s *Suffix[T]) Find(ctx context.Context, text string) (items []string) {
+	return s.M.Find(ctx, text)
 }
 
 // Add ...
@@ -158,7 +162,8 @@ type M interface {
 	Add(id string, title string)
 	Update(id string, title string)
 	Delete(id string, text string)
-	S(ctx context.Context, text string) (items []string)
+	Search(ctx context.Context, text string) (items []string)
+	Find(ctx context.Context, text string) (items []string)
 }
 
 type suffixTree interface {
@@ -166,6 +171,7 @@ type suffixTree interface {
 	Put(in string, idx int)
 	Delete(in string, idx int)
 	Search(in string) (out []int)
+	Find(in string) (out []int)
 }
 
 type m[T d] struct {
@@ -204,7 +210,7 @@ func (s *m[T]) Delete(id string, text string) {
 	s.tree.Delete(text, idx)
 }
 
-func (s *m[T]) S(ctx context.Context, text string) (items []string) {
+func (s *m[T]) Search(ctx context.Context, text string) (items []string) {
 	s.RLock()
 	defer s.RUnlock()
 	var (
@@ -212,6 +218,23 @@ func (s *m[T]) S(ctx context.Context, text string) (items []string) {
 		found bool
 	)
 	idxs := s.tree.Search(text)
+	items = make([]string, len(idxs))
+	for k, idx := range idxs {
+		if id, found = s.cache.GetIDByIndex(idx); found {
+			items[k] = id
+		}
+	}
+	return
+}
+
+func (s *m[T]) Find(ctx context.Context, text string) (items []string) {
+	s.RLock()
+	defer s.RUnlock()
+	var (
+		id    string
+		found bool
+	)
+	idxs := s.tree.Find(text)
 	items = make([]string, len(idxs))
 	for k, idx := range idxs {
 		if id, found = s.cache.GetIDByIndex(idx); found {

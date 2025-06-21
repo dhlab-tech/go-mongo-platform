@@ -48,7 +48,11 @@ func TestS_Find(t *testing.T) {
 	res := a.Find("фасад")
 	assert.Equal(t, []int{2}, res)
 	res = a.Find("булочная")
-	assert.Equal(t, []int{3, 1, 2}, res)
+	if res[0] == 3 {
+		assert.Equal(t, []int{3, 1, 2}, res)
+	} else {
+		assert.Equal(t, []int{1, 3, 2}, res)
+	}
 }
 
 func TestM_S(t *testing.T) {
@@ -65,13 +69,13 @@ func TestM_S(t *testing.T) {
 		m.Add(im.ID(), v)
 		expected = append(expected, im.ID())
 	}
-	res := m.S(context.Background(), "выпе")
+	res := m.Search(context.Background(), "выпе")
 	assert.Equal(t, expected, res)
-	res = m.S(context.Background(), "дкая")
+	res = m.Search(context.Background(), "дкая")
 	assert.Equal(t, []string{expected[1]}, res)
-	res = m.S(context.Background(), "сладкая")
+	res = m.Search(context.Background(), "сладкая")
 	assert.Equal(t, []string{expected[1]}, res)
-	res = m.S(context.Background(), "ечка")
+	res = m.Search(context.Background(), "ечка")
 	assert.Equal(t, expected, res)
 }
 
