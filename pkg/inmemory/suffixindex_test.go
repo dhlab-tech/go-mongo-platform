@@ -40,6 +40,17 @@ func TestS_Put_3(t *testing.T) {
 	assert.Equal(t, []int{}, res)
 }
 
+func TestS_Find(t *testing.T) {
+	a := inmemory.NewS(inmemory.NewIntersect(), btree.New(100), inmemory.NewPool())
+	a.Put("Булочка с вишней", 1)
+	a.Put("БАК ФАСОВКА Булгур", 2)
+	a.Put("Булочка с корицей", 3)
+	res := a.Find("фасад")
+	assert.Equal(t, []int{2}, res)
+	res = a.Find("булочная")
+	assert.Equal(t, []int{3, 1, 2}, res)
+}
+
 func TestM_S(t *testing.T) {
 	c := inmemory.NewCache[*inmemory.Image](make(map[string]*inmemory.Image))
 	m := inmemory.NewM(

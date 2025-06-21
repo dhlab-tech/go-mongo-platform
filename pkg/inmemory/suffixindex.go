@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"unicode"
 
@@ -236,6 +237,7 @@ type S struct {
 	intersect
 	data *btree.BTree
 	pool *Pool
+	ms   map[rune]struct{}
 }
 
 // Reset ...
@@ -340,6 +342,39 @@ func (a *S) Search(in string) (out []int) {
 	return
 }
 
+func (a *S) Find(in string) (out []int) {
+	_in := []rune(in)
+	for i := len(_in) - 1; i >= 0; i-- {
+		if _, ok := a.ms[_in[i]]; ok {
+			_in = append(_in[:i], _in[i+1:]...)
+		}
+	}
+	type pp struct {
+		Idx   int
+		Count int
+	}
+	res := map[int]pp{}
+	for k := 0; k <= len(_in)-3; k++ {
+		for _, idx := range a.Search(string(_in[k : k+3])) {
+			_pp := res[idx]
+			_pp.Idx = idx
+			_pp.Count++
+			res[idx] = _pp
+		}
+	}
+	_res := []pp{}
+	for _, _pp := range res {
+		_res = append(_res, _pp)
+	}
+	sort.Slice(_res, func(i, j int) bool {
+		return _res[i].Count > _res[j].Count
+	})
+	for _, v := range _res {
+		out = append(out, v.Idx)
+	}
+	return
+}
+
 func (a *S) set(i []rune, idx int) {
 	var g btree.Item
 	p := a.pool.Acquire()
@@ -404,11 +439,17 @@ func NewS(
 	data *btree.BTree,
 	pool *Pool,
 ) *S {
-	return &S{
+	a := S{
 		intersect: intersect,
 		data:      data,
 		pool:      pool,
 	}
+	s := append([]rune(` _-=+()*&^%$#@!~!"№;%:?[]{}\|/,.><`), []rune("`")...)
+	a.ms = map[rune]struct{}{}
+	for _, v := range s {
+		a.ms[v] = struct{}{}
+	}
+	return &a
 }
 
 type s [3]rune
