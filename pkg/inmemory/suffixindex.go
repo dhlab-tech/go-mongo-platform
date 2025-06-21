@@ -330,7 +330,7 @@ func (a *S) Search(in string) (out []int) {
 		out = a.IntersectInt(out, a.get(p))
 		return
 	}
-	for k := 1; k < len(i)-3; k++ {
+	for k := 1; k <= len(i)-3; k++ {
 		p.key[0] = i[k]
 		p.key[1] = i[k+1]
 		p.key[2] = i[k+2]

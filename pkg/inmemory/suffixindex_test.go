@@ -36,6 +36,8 @@ func TestS_Put_3(t *testing.T) {
 	assert.Equal(t, []int{2}, res)
 	res = a.Search("кор")
 	assert.Equal(t, []int{3}, res)
+	res = a.Search("булоча")
+	assert.Equal(t, []int{}, res)
 }
 
 func TestM_S(t *testing.T) {
