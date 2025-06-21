@@ -11,25 +11,18 @@ type Intersect struct {
 
 // Intersect ...
 func (s *Intersect) Intersect(in1 []string, in ...[]string) (res []string) {
-	t := make(map[string]struct{}, len(in1))
-	for _, v := range in1 {
-		t[v] = struct{}{}
-	}
-	tm := 0
+	t := map[string]int{}
 	for _, i := range in {
-		if tm > 0 {
-			t = make(map[string]struct{})
-			for _, v := range res {
-				t[v] = struct{}{}
-			}
-			res = make([]string, 0)
+		for _, _i := range i {
+			t[_i]++
 		}
-		for _, d := range i {
-			if _, ok := t[d]; ok {
-				res = append(res, d)
+	}
+	for _, v := range in1 {
+		if n, ok := t[v]; ok {
+			if n == len(in) {
+				res = append(res, v)
 			}
 		}
-		tm++
 	}
 	return
 }
