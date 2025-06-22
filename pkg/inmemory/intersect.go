@@ -94,21 +94,6 @@ func (s *Intersect) LeftOutter(in1, in2 []string) (res []string) {
 	return
 }
 
-func (s *Intersect) LeftOutterSlice(in1 []any, in2 []any, _in1 func(i any) string, _in2 func(i any) string) (res []any) {
-	t := make(map[string]any, len(in1))
-	for _, d := range in1 {
-		t[_in1(d)] = struct{}{}
-	}
-	for _, v := range in2 {
-		delete(t, _in2(v))
-	}
-	res = make([]any, 0, len(t))
-	for d := range t {
-		res = append(res, d)
-	}
-	return
-}
-
 // NewIntersect ...
 func NewIntersect() *Intersect {
 	return &Intersect{}
