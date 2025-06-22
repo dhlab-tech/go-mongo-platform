@@ -42,7 +42,7 @@ func (s *inverseIndex[T]) Get(ctx context.Context, val ...*string) (ids []string
 		Any("val", val).
 		Any("data", s.data).
 		Msg("InverseIndex:Get")
-	if val != nil {
+	if len(val) >= 1 && val[0] != nil {
 		zerolog.Ctx(ctx).Debug().
 			Any("from", s.from).
 			Any("val", val).

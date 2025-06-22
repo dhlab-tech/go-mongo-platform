@@ -102,6 +102,8 @@ func TestInverseIndex_ParentNil(t *testing.T) {
 	assert.Equal(t, a, ids)
 	ids = idx.Get(context.Background())
 	assert.Equal(t, []string{img.ID()}, ids)
+	ids = idx.Get(context.Background(), nil)
+	assert.Equal(t, []string{img.ID()}, ids)
 }
 
 func TestInverseIndex_Complex(t *testing.T) {
