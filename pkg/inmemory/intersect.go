@@ -79,6 +79,21 @@ func (s *Intersect) UnionInt(in1, in2 []int) (res []int) {
 	return
 }
 
+func (s *Intersect) LeftOutter(in1, in2 []string) (res []string) {
+	t := make(map[string]struct{}, len(in1))
+	for _, d := range in1 {
+		t[d] = struct{}{}
+	}
+	for _, v := range in2 {
+		delete(t, v)
+	}
+	res = make([]string, 0, len(t))
+	for d := range t {
+		res = append(res, d)
+	}
+	return
+}
+
 // NewIntersect ...
 func NewIntersect() *Intersect {
 	return &Intersect{}
