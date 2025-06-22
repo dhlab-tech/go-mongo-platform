@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -33,7 +34,7 @@ func NewInverseIndex[T d](
 	}
 }
 
-func (s *inverseIndex[T]) Get(ctx context.Context, val *string) (ids []string) {
+func (s *inverseIndex[T]) Get(ctx context.Context, val ...*string) (ids []string) {
 	s.RLock()
 	defer s.RUnlock()
 	zerolog.Ctx(ctx).Debug().
@@ -47,7 +48,13 @@ func (s *inverseIndex[T]) Get(ctx context.Context, val *string) (ids []string) {
 			Any("val", val).
 			Any("data", s.data).
 			Msg("InverseIndex:Get:val not nil")
-		return s.data[*val]
+		_val := make([]string, len(val))
+		for i := 0; i < len(val); i++ {
+			if val[i] != nil {
+				_val[i] = *val[i]
+			}
+		}
+		return s.data[strings.Join(_val, "")]
 	}
 	zerolog.Ctx(ctx).Debug().
 		Any("from", s.from).

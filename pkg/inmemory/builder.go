@@ -30,7 +30,7 @@ type EventListener[T d] interface {
 
 type InverseIndex[T d] interface {
 	StreamEventListener[T]
-	Get(ctx context.Context, val *string) (ids []string)
+	Get(ctx context.Context, val ...*string) (ids []string)
 }
 
 type InverseUniqueIndex[T d] interface {

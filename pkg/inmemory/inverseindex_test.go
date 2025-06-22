@@ -65,6 +65,15 @@ type R struct {
 	Parent *string `json:"parent" bson:"parent" indexes:"inverse:parent_id:from"`
 }
 
+type DocSetImage struct {
+	D
+	CatalogID *string `json:"catalogId" bson:"catalogId" indexes:"inverse:catalog_id:from,inverse:catalogItem:from"`
+	ItemID    *string `json:"itemId" bson:"itemId" indexes:"inverse:catalogItem:from"`
+	ImageID   *string `json:"imageId" bson:"imageId"`
+	SortOrder *int    `json:"sortOrder" bson:"sortOrder"`
+	Title     *string `json:"title" bson:"title"`
+}
+
 func TestInverseIndex_ParentUpdate(t *testing.T) {
 	c := inmemory.NewCache[*Image](make(map[string]*Image))
 	idx := inmemory.NewInverseIndex(map[string][]string{}, []string{}, c, []string{"R+Parent"}, nil)
@@ -79,5 +88,32 @@ func TestInverseIndex_ParentUpdate(t *testing.T) {
 	ids = idx.Get(context.Background(), &parent1)
 	assert.Equal(t, []string{}, ids)
 	ids = idx.Get(context.Background(), &parent2)
+	assert.Equal(t, []string{img.ID()}, ids)
+}
+
+func TestInverseIndex_ParentNil(t *testing.T) {
+	c := inmemory.NewCache[*Image](make(map[string]*Image))
+	idx := inmemory.NewInverseIndex(map[string][]string{}, []string{}, c, []string{"R+Parent"}, nil)
+	img := Image{}
+	idx.Add(context.Background(), &img)
+	c.Add(context.Background(), &img)
+	ids := idx.Get(context.Background(), &parent1)
+	var a []string
+	assert.Equal(t, a, ids)
+	ids = idx.Get(context.Background())
+	assert.Equal(t, []string{img.ID()}, ids)
+}
+
+func TestInverseIndex_Complex(t *testing.T) {
+	c := inmemory.NewCache(make(map[string]*DocSetImage))
+	idx := inmemory.NewInverseIndex(map[string][]string{}, []string{}, c, []string{"CatalogID", "ItemID"}, nil)
+	img := DocSetImage{
+		CatalogID: &parent1,
+		ItemID:    &parent2,
+		ImageID:   &parent1,
+	}
+	idx.Add(context.Background(), &img)
+	c.Add(context.Background(), &img)
+	ids := idx.Get(context.Background(), &parent1, &parent2)
 	assert.Equal(t, []string{img.ID()}, ids)
 }
