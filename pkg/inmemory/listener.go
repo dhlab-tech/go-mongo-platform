@@ -71,3 +71,64 @@ func NewListener[T d](cache Cache[T]) *Listener[T] {
 		beforeListeners: []StreamEventListener[T]{},
 	}
 }
+
+type AddCallbackListener[T d] struct {
+	callback func(ctx context.Context, v T)
+}
+
+func NewAddCallbackListener[T d](callback func(ctx context.Context, v T)) *AddCallbackListener[T] {
+	return &AddCallbackListener[T]{
+		callback: callback,
+	}
+}
+
+func (s *AddCallbackListener[T]) Add(ctx context.Context, v T) {
+	s.callback(ctx, v)
+}
+
+func (s *AddCallbackListener[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string) {
+}
+
+func (s *AddCallbackListener[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+
+}
+
+type UpdateCallbackListener[T d] struct {
+	callback func(ctx context.Context, id string, v T, removedFields []string)
+}
+
+func NewUpdateCallbackListener[T d](callback func(ctx context.Context, id string, v T, removedFields []string)) *UpdateCallbackListener[T] {
+	return &UpdateCallbackListener[T]{
+		callback: callback,
+	}
+}
+
+func (s *UpdateCallbackListener[T]) Add(ctx context.Context, v T) {
+}
+
+func (s *UpdateCallbackListener[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string) {
+	s.callback(ctx, _id.Hex(), updatedFields, removedFields)
+}
+
+func (s *UpdateCallbackListener[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+}
+
+type DeleteCallbackListener[T d] struct {
+	callback func(ctx context.Context, id string)
+}
+
+func NewDeleteCallbackListener[T d](callback func(ctx context.Context, id string)) *DeleteCallbackListener[T] {
+	return &DeleteCallbackListener[T]{
+		callback: callback,
+	}
+}
+
+func (s *DeleteCallbackListener[T]) Add(ctx context.Context, v T) {
+}
+
+func (s *DeleteCallbackListener[T]) Update(ctx context.Context, _id primitive.ObjectID, updatedFields T, removedFields []string) {
+}
+
+func (s *DeleteCallbackListener[T]) Delete(ctx context.Context, _id primitive.ObjectID) {
+	s.callback(ctx, _id.Hex())
+}
