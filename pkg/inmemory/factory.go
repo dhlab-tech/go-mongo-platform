@@ -23,6 +23,7 @@ type InMemory[T d] interface {
 	Spawn(ctx context.Context) T
 	AwaitCreate(ctx context.Context, ps T) (id string, err error)
 	AwaitUpdate(ctx context.Context, ps T) (res T, err error)
+	AwaitUpdateDoc(ctx context.Context, id string, set, unset bson.D) (found bool, err error)
 	AwaitDelete(ctx context.Context, ps T) (err error)
 }
 
