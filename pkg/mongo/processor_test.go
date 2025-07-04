@@ -87,6 +87,7 @@ type Config struct {
 	Menu     map[string]string `json:"menu" bson:"menu"`
 	MSConfig *string           `json:"msConfig" bson:"msConfig"`
 	Fits     []Fit             `json:"fits" bson:"fits"`
+	Labels   []string          `json:"labels" bson:"labels"`
 }
 
 type Fit struct {
@@ -536,6 +537,7 @@ func TestProcessor_PrepareUpdate_Config(t *testing.T) {
 			{Width: 400, Height: 533},
 			{Width: 600, Height: 800},
 		},
+		Labels: []string{"__test"},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, &Config{
@@ -549,6 +551,7 @@ func TestProcessor_PrepareUpdate_Config(t *testing.T) {
 			{Width: 400, Height: 533},
 			{Width: 600, Height: 800},
 		},
+		Labels: []string{"__test"},
 	}, pr)
 	assert.Equal(t, bson.D{
 		bson.E{Key: "fits", Value: bson.A{
@@ -568,6 +571,42 @@ func TestProcessor_PrepareUpdate_Config(t *testing.T) {
 				bson.E{Key: "width", Value: int64(600)},
 				bson.E{Key: "height", Value: int64(800)},
 			},
+		}},
+		bson.E{Key: "labels", Value: bson.A{
+			"__test",
+		}},
+	}, set)
+}
+
+func TestProcessor_PrepareUpdate_Config_Labels(t *testing.T) {
+	id := primitive.ObjectID{id1, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0, id0}
+	c := inmemory.NewCache[*Config](map[string]*Config{})
+	c.Add(context.Background(), &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		Labels: []string{"__test1", "__test2"},
+	})
+	p := mongo.NewProcessor[*Config](c, nil, nil, nil)
+	pr, set, _, err := p.PrepareUpdate(context.Background(), &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		Labels: []string{"__test1", "__test2", "__test3"},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, &Config{
+		D: D{
+			Id: id,
+			V:  &version1,
+		},
+		Labels: []string{"__test1", "__test2", "__test3"},
+	}, pr)
+	assert.Equal(t, bson.D{
+		bson.E{Key: "labels", Value: bson.A{
+			"__test1", "__test2", "__test3",
 		}},
 	}, set)
 }

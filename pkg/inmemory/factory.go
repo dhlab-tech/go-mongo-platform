@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/dhlab-tech/go-mongo-platform/pkg/mongo"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type stream interface {
@@ -73,6 +74,24 @@ func (p *inMemory[T]) AwaitUpdate(ctx context.Context, ps T) (res T, err error) 
 	res, err = p.Mongo.Processor.Update(ctx, ps)
 	if err != nil {
 		p.CacheWithEventListener.AwaitNotify.DeleteListenerUpdate(ps.ID(), ui)
+		if errors.Is(err, mongo.ErrNothingToUpdate) {
+			err = nil
+		}
+		return
+	}
+	<-ch
+	return
+}
+
+func (p *inMemory[T]) AwaitUpdateDoc(ctx context.Context, id string, set, unset bson.D) (found bool, err error) {
+	ch := make(chan struct{})
+	defer close(ch)
+	ui := p.CacheWithEventListener.AwaitNotify.AddListenerUpdate(id, func() {
+		ch <- struct{}{}
+	})
+	found, err = p.Mongo.Updater.UpdateOne(ctx, id, nil, set, unset)
+	if err != nil {
+		p.CacheWithEventListener.AwaitNotify.DeleteListenerUpdate(id, ui)
 		if errors.Is(err, mongo.ErrNothingToUpdate) {
 			err = nil
 		}
