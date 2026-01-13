@@ -1,0 +1,36 @@
+name: Question
+description: Ask a question
+title: "[QUESTION] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question!
+        
+        Before asking, please check:
+        - [README.md](../../README.md)
+        - [docs/](docs/)
+        - [GitHub Discussions](../../discussions)
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Your question
+      placeholder: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context about your question (use case, environment, etc.)
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any other information that might be helpful.
+

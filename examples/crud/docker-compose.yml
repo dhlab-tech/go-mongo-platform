@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb-replica
+    ports:
+      - "27017:27017"
+    command: mongod --replSet rs0 --bind_ip_all
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - mongo-network
+
+  mongodb-setup:
+    image: mongo:7.0
+    container_name: mongodb-setup
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: >
+      bash -c "
+      sleep 5 &&
+      mongosh mongodb://mongodb:27017/admin --eval 'rs.initiate({
+        _id: \"rs0\",
+        members: [{ _id: 0, host: \"mongodb:27017\" }]
+      })' &&
+      echo 'Replica set initialized'
+      "
+    networks:
+      - mongo-network
+
+networks:
+  mongo-network:
+    driver: bridge
+
