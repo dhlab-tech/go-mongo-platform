@@ -60,20 +60,46 @@ func updateStringFieldValueByName(in any, field string) (r *string) {
 	}()
 	p := reflect.ValueOf(in)
 	if p.Kind() == reflect.Ptr {
-		return updateStringFieldValueByName(p.Elem().Interface(), field)
+		if p.IsNil() {
+			return nil
+		}
+		elem := p.Elem()
+		if !elem.IsValid() {
+			return nil
+		}
+		return updateStringFieldValueByName(elem.Interface(), field)
 	}
 	_field := strings.Split(field, "+")
 	if len(_field) > 1 {
-		return updateStringFieldValueByName(p.FieldByName(_field[0]).Interface(), strings.Join(_field[1:], "+"))
+		fieldVal := p.FieldByName(_field[0])
+		if !fieldVal.IsValid() {
+			return nil
+		}
+		if fieldVal.Kind() == reflect.Ptr && fieldVal.IsNil() {
+			return nil
+		}
+		if fieldVal.Kind() == reflect.Ptr {
+			fieldVal = fieldVal.Elem()
+		}
+		if !fieldVal.IsValid() {
+			return nil
+		}
+		return updateStringFieldValueByName(fieldVal.Interface(), strings.Join(_field[1:], "+"))
 	}
-	if p.FieldByName(field).Kind() == reflect.Ptr {
-		if !p.FieldByName(field).IsNil() {
-			p = p.FieldByName(field).Elem()
-		} else {
+	fieldVal := p.FieldByName(field)
+	if !fieldVal.IsValid() {
+		return nil
+	}
+	if fieldVal.Kind() == reflect.Ptr {
+		if fieldVal.IsNil() {
+			return nil
+		}
+		p = fieldVal.Elem()
+		if !p.IsValid() {
 			return nil
 		}
 	} else {
-		p = p.FieldByName(field)
+		p = fieldVal
 	}
 	switch p.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -87,7 +113,7 @@ func updateStringFieldValueByName(in any, field string) (r *string) {
 	case reflect.String:
 		return ptr(p.String())
 	default:
-		if !p.IsNil() {
+		if p.IsValid() && !p.IsNil() {
 			return ptr(fmt.Sprintf("%v", p.Interface()))
 		}
 	}
@@ -116,20 +142,46 @@ func ptr(in string) *string {
 func _updateStringFieldValueByName(in any, field string) (r []string) {
 	p := reflect.ValueOf(in)
 	if p.Kind() == reflect.Ptr {
-		return _updateStringFieldValueByName(p.Elem().Interface(), field)
+		if p.IsNil() {
+			return nil
+		}
+		elem := p.Elem()
+		if !elem.IsValid() {
+			return nil
+		}
+		return _updateStringFieldValueByName(elem.Interface(), field)
 	}
 	_field := strings.Split(field, "+")
 	if len(_field) > 1 {
-		return _updateStringFieldValueByName(p.FieldByName(_field[0]).Interface(), strings.Join(_field[1:], "+"))
+		fieldVal := p.FieldByName(_field[0])
+		if !fieldVal.IsValid() {
+			return nil
+		}
+		if fieldVal.Kind() == reflect.Ptr && fieldVal.IsNil() {
+			return nil
+		}
+		if fieldVal.Kind() == reflect.Ptr {
+			fieldVal = fieldVal.Elem()
+		}
+		if !fieldVal.IsValid() {
+			return nil
+		}
+		return _updateStringFieldValueByName(fieldVal.Interface(), strings.Join(_field[1:], "+"))
 	}
-	if p.FieldByName(field).Kind() == reflect.Ptr {
-		if !p.FieldByName(field).IsNil() {
-			p = p.FieldByName(field).Elem()
-		} else {
+	fieldVal := p.FieldByName(field)
+	if !fieldVal.IsValid() {
+		return nil
+	}
+	if fieldVal.Kind() == reflect.Ptr {
+		if fieldVal.IsNil() {
+			return nil
+		}
+		p = fieldVal.Elem()
+		if !p.IsValid() {
 			return nil
 		}
 	} else {
-		p = p.FieldByName(field)
+		p = fieldVal
 	}
 	switch p.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -159,7 +211,7 @@ func _updateStringFieldValueByName(in any, field string) (r []string) {
 		}
 		return
 	default:
-		if !p.IsNil() {
+		if p.IsValid() && !p.IsNil() {
 			return append(r, fmt.Sprintf("%v", p.Interface()))
 		}
 	}
