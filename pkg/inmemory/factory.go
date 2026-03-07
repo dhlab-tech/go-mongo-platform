@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/dhlab-tech/go-mongo-platform/pkg/mongo"
+	"github.com/rs/zerolog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -222,6 +223,7 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 	if entityDeps.Option != nil {
 		entityDeps.Option(&i)
 	}
+	zerolog.Ctx(ctx).Info().Str("collection", entityDeps.Collection).Any("im", im).Msg("in-memory initialized")
 	if im != nil {
 		its, err := m.Searcher.All(ctx)
 		if err != nil {
