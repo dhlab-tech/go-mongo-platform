@@ -233,9 +233,11 @@ func (p *Processor[T]) prepareCreateForStruct(ctx context.Context, fieldValue re
 			return
 		}
 		tag := fieldType.Tag.Get("bson")
-		if tag != "" {
+		if isBsonInline(tag) {
+			doc = append(doc, prDoc...)
+		} else if key := bsonTagKey(tag); key != "" && key != "-" {
 			doc = append(doc, bson.E{
-				Key:   tag,
+				Key:   key,
 				Value: prDoc,
 			})
 		} else {
@@ -673,9 +675,11 @@ func (p *Processor[T]) prepareUpdateForStruct(ctx context.Context, _id string, n
 			}
 			if len(prSet) > 0 {
 				tag := fieldType.Tag.Get("bson")
-				if tag != "" {
+				if isBsonInline(tag) {
+					set = append(set, prSet...)
+				} else if key := bsonTagKey(tag); key != "" && key != "-" {
 					set = append(set, bson.E{
-						Key:   tag,
+						Key:   key,
 						Value: prSet,
 					})
 				} else {
@@ -740,6 +744,27 @@ func (p *Processor[T]) isPrimitiveObjectID(t reflect.Type) bool {
 
 func (p *Processor[T]) isJsonRawMessage(t reflect.Type) bool {
 	return strings.Compare(t.String(), "json.RawMessage") == 0
+}
+
+// isBsonInline reports whether the bson tag means "inline" (flatten nested struct into parent).
+// Tag ",inline" or ",omitempty,inline" should merge fields, not use a key.
+func isBsonInline(tag string) bool {
+	if tag == "" || tag == "-" {
+		return false
+	}
+	parts := strings.SplitN(tag, ",", 2)
+	key := strings.TrimSpace(parts[0])
+	opts := ""
+	if len(parts) > 1 {
+		opts = "," + parts[1]
+	}
+	return key == "" && strings.Contains(opts, ",inline")
+}
+
+// bsonTagKey returns the bson key name (first comma-separated segment). Used to avoid using ",inline" as key.
+func bsonTagKey(tag string) string {
+	parts := strings.SplitN(tag, ",", 2)
+	return strings.TrimSpace(parts[0])
 }
 
 // NewProcessor ...

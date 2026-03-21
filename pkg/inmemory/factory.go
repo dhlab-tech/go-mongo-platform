@@ -223,7 +223,7 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 	if entityDeps.Option != nil {
 		entityDeps.Option(&i)
 	}
-	zerolog.Ctx(ctx).Info().Str("collection", entityDeps.Collection).Any("im", im).Msg("in-memory initialized")
+	zerolog.Ctx(ctx).Debug().Str("collection", entityDeps.Collection).Any("im", im).Msg("in-memory initialized")
 	if im != nil {
 		its, err := m.Searcher.All(ctx)
 		if err != nil {
