@@ -225,7 +225,15 @@ func NewInMemory[T d](ctx context.Context, stream stream, deps MongoDeps, entity
 	}
 	zerolog.Ctx(ctx).Debug().Str("collection", entityDeps.Collection).Any("im", im).Msg("in-memory initialized")
 	if im != nil {
-		its, err := m.Searcher.All(ctx)
+		var (
+			its []T
+			err error
+		)
+		if entityDeps.WarmupFilter != nil {
+			its, err = m.Searcher.FindWithFilter(ctx, *entityDeps.WarmupFilter)
+		} else {
+			its, err = m.Searcher.All(ctx)
+		}
 		if err != nil {
 			return nil, err
 		}

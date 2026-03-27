@@ -3,10 +3,12 @@ package mongo
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Searcher provides query and search operations for typed entities in MongoDB.
@@ -18,12 +20,70 @@ type Searcher[T d] struct {
 	connectionTimeout time.Duration
 }
 
+func findOpts() *options.FindOptions {
+	return options.Find().SetBatchSize(2000)
+}
+
+// decodeCursorDoc decodes a cursor document into T. Pointer-to-struct entities (common in this codebase)
+// use bson.Unmarshal directly; the legacy JSON path is kept as a fallback for unusual types.
+func decodeCursorDoc[T d](cur *mongo.Cursor) (instance T, err error) {
+	var zero T
+	typ := reflect.TypeOf(zero)
+	if typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Struct {
+		ptr := reflect.New(typ.Elem())
+		instance = ptr.Interface().(T)
+		err = cur.Decode(instance)
+		return instance, err
+	}
+	if typ.Kind() == reflect.Struct {
+		err = cur.Decode(&instance)
+		return instance, err
+	}
+	var bsonDocument bson.D
+	if err = cur.Decode(&bsonDocument); err != nil {
+		return instance, err
+	}
+	var temporaryBytes []byte
+	temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+	if err != nil {
+		return instance, err
+	}
+	err = json.Unmarshal(temporaryBytes, &instance)
+	return instance, err
+}
+
+func decodeSingleDoc[T d](raw bson.Raw) (instance T, err error) {
+	var zero T
+	typ := reflect.TypeOf(zero)
+	if typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Struct {
+		ptr := reflect.New(typ.Elem())
+		instance = ptr.Interface().(T)
+		err = bson.Unmarshal(raw, instance)
+		return instance, err
+	}
+	if typ.Kind() == reflect.Struct {
+		err = bson.Unmarshal(raw, &instance)
+		return instance, err
+	}
+	var bsonDocument bson.D
+	if err = bson.Unmarshal(raw, &bsonDocument); err != nil {
+		return instance, err
+	}
+	var temporaryBytes []byte
+	temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+	if err != nil {
+		return instance, err
+	}
+	err = json.Unmarshal(temporaryBytes, &instance)
+	return instance, err
+}
+
 // All retrieves all documents from the collection and returns them as typed entities.
 func (s *Searcher[T]) All(ctx context.Context) (items []T, err error) {
 	collection := s.client.Database(s.db).Collection(s.collection)
 	ctx, cancel := context.WithTimeout(ctx, s.connectionTimeout)
 	defer cancel()
-	cur, e := collection.Find(ctx, bson.M{})
+	cur, e := collection.Find(ctx, bson.M{}, findOpts())
 	if e != nil {
 		return nil, e
 	}
@@ -31,18 +91,10 @@ func (s *Searcher[T]) All(ctx context.Context) (items []T, err error) {
 		_ = cur.Close(ctx)
 	}()
 	for cur.Next(ctx) {
-		var bsonDocument bson.D
-		if err = cur.Decode(&bsonDocument); err != nil {
-			continue
-		}
-		var temporaryBytes []byte
-		temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+		var instance T
+		instance, err = decodeCursorDoc[T](cur)
 		if err != nil {
 			continue
-		}
-		var instance T
-		if err = json.Unmarshal(temporaryBytes, &instance); err != nil {
-			return
 		}
 		items = append(items, instance)
 	}
@@ -59,7 +111,7 @@ func (s *Searcher[T]) Find(ctx context.Context, filter map[string]interface{}) (
 	ctx, cancel := context.WithTimeout(ctx, s.connectionTimeout)
 	defer cancel()
 	bsonFilter := bson.M(filter)
-	cur, e := collection.Find(ctx, bsonFilter)
+	cur, e := collection.Find(ctx, bsonFilter, findOpts())
 	if e != nil {
 		return nil, e
 	}
@@ -67,18 +119,10 @@ func (s *Searcher[T]) Find(ctx context.Context, filter map[string]interface{}) (
 		_ = cur.Close(ctx)
 	}()
 	for cur.Next(ctx) {
-		var bsonDocument bson.D
-		if err = cur.Decode(&bsonDocument); err != nil {
-			continue
-		}
-		var temporaryBytes []byte
-		temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+		var instance T
+		instance, err = decodeCursorDoc[T](cur)
 		if err != nil {
 			continue
-		}
-		var instance T
-		if err = json.Unmarshal(temporaryBytes, &instance); err != nil {
-			return
 		}
 		items = append(items, instance)
 	}
@@ -96,21 +140,16 @@ func (s *Searcher[T]) FindOne(ctx context.Context, filter map[string]interface{}
 	ctx, cancel := context.WithTimeout(ctx, s.connectionTimeout)
 	defer cancel()
 	bsonFilter := bson.M(filter)
-	var bsonDocument bson.D
-	err = collection.FindOne(ctx, bsonFilter).Decode(&bsonDocument)
+	var raw bson.Raw
+	err = collection.FindOne(ctx, bsonFilter).Decode(&raw)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return item, false, nil
 		}
 		return item, false, err
 	}
-	var temporaryBytes []byte
-	temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+	instance, err := decodeSingleDoc[T](raw)
 	if err != nil {
-		return item, false, err
-	}
-	var instance T
-	if err = json.Unmarshal(temporaryBytes, &instance); err != nil {
 		return item, false, err
 	}
 	return instance, true, nil
@@ -122,7 +161,7 @@ func (s *Searcher[T]) FindWithFilter(ctx context.Context, filter bson.M) (items 
 	collection := s.client.Database(s.db).Collection(s.collection)
 	ctx, cancel := context.WithTimeout(ctx, s.connectionTimeout)
 	defer cancel()
-	cur, e := collection.Find(ctx, filter)
+	cur, e := collection.Find(ctx, filter, findOpts())
 	if e != nil {
 		return nil, e
 	}
@@ -130,18 +169,10 @@ func (s *Searcher[T]) FindWithFilter(ctx context.Context, filter bson.M) (items 
 		_ = cur.Close(ctx)
 	}()
 	for cur.Next(ctx) {
-		var bsonDocument bson.D
-		if err = cur.Decode(&bsonDocument); err != nil {
-			continue
-		}
-		var temporaryBytes []byte
-		temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+		var instance T
+		instance, err = decodeCursorDoc[T](cur)
 		if err != nil {
 			continue
-		}
-		var instance T
-		if err = json.Unmarshal(temporaryBytes, &instance); err != nil {
-			return
 		}
 		items = append(items, instance)
 	}
@@ -158,21 +189,16 @@ func (s *Searcher[T]) FindOneWithFilter(ctx context.Context, filter bson.M) (ite
 	collection := s.client.Database(s.db).Collection(s.collection)
 	ctx, cancel := context.WithTimeout(ctx, s.connectionTimeout)
 	defer cancel()
-	var bsonDocument bson.D
-	err = collection.FindOne(ctx, filter).Decode(&bsonDocument)
+	var raw bson.Raw
+	err = collection.FindOne(ctx, filter).Decode(&raw)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return item, false, nil
 		}
 		return item, false, err
 	}
-	var temporaryBytes []byte
-	temporaryBytes, err = bson.MarshalExtJSON(bsonDocument, false, false)
+	instance, err := decodeSingleDoc[T](raw)
 	if err != nil {
-		return item, false, err
-	}
-	var instance T
-	if err = json.Unmarshal(temporaryBytes, &instance); err != nil {
 		return item, false, err
 	}
 	return instance, true, nil
